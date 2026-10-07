@@ -110,37 +110,13 @@ class AdminAnalyticsAndResearchExportTest extends TestCase
             ]);
     }
 
-    public function test_can_preview_research_dataset(): void
+    public function test_can_stream_export_education_csv(): void
     {
         $response = $this->withHeader('Authorization', 'Bearer ' . $this->token)
-            ->getJson('/api/admin/research/preview');
-
-        $response->assertStatus(200)
-            ->assertJsonStructure([
-                'status',
-                'data' => [
-                    '*' => [
-                        'id',
-                        'respondentCode',
-                        'sessionId',
-                        'topic',
-                        'interactionCount',
-                        'status',
-                        'quizScore',
-                        'materialVersion',
-                        'startedAt',
-                    ],
-                ],
-            ]);
-    }
-
-    public function test_can_stream_export_research_csv(): void
-    {
-        $response = $this->withHeader('Authorization', 'Bearer ' . $this->token)
-            ->get('/api/admin/research/export-csv?period=ALL&fields=respondentCode,topic,status');
+            ->get('/api/admin/education/export-csv?period=ALL&fields=respondentCode,topic,status');
 
         $response->assertStatus(200);
         $this->assertStringContainsString('text/csv', $response->headers->get('content-type'));
-        $this->assertStringContainsString('attachment; filename="research_dataset_margodadi_', $response->headers->get('content-disposition'));
+        $this->assertStringContainsString('attachment; filename="dataset_edukasi_margodadi_', $response->headers->get('content-disposition'));
     }
 }

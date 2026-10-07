@@ -5,8 +5,8 @@ use App\Http\Controllers\Api\Admin\AnalyticsController;
 use App\Http\Controllers\Api\Admin\ConversationController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\EducationController;
+use App\Http\Controllers\Api\Admin\KnowledgeBaseController;
 use App\Http\Controllers\Api\Admin\OperatorController;
-use App\Http\Controllers\Api\Admin\ResearchExportController;
 use App\Http\Controllers\Api\Admin\SettingController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Public\ChatbotController;
@@ -69,9 +69,23 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     // Analytics & SLA Performance
     Route::get('/analytics/overview', [AnalyticsController::class, 'overview']);
 
-    // Research Export (Thesis & PKM)
-    Route::get('/research/preview', [ResearchExportController::class, 'preview']);
-    Route::get('/research/export-csv', [ResearchExportController::class, 'exportCsv']);
+    // Knowledge Base & AI Vector Store Management
+    Route::prefix('knowledge-base')->group(function () {
+        Route::get('/stats', [KnowledgeBaseController::class, 'stats']);
+        Route::get('/documents', [KnowledgeBaseController::class, 'index']);
+        Route::post('/documents', [KnowledgeBaseController::class, 'store']);
+        Route::get('/documents/{id}', [KnowledgeBaseController::class, 'show']);
+        Route::put('/documents/{id}', [KnowledgeBaseController::class, 'update']);
+        Route::delete('/documents/{id}', [KnowledgeBaseController::class, 'destroy']);
+        Route::post('/documents/{id}/reindex', [KnowledgeBaseController::class, 'reindex']);
+        Route::post('/reindex-all', [KnowledgeBaseController::class, 'reindexAll']);
+        Route::post('/test-retrieval', [KnowledgeBaseController::class, 'testRetrieval']);
+        Route::put('/chunks/{chunkId}', [KnowledgeBaseController::class, 'updateChunk']);
+        Route::delete('/chunks/{chunkId}', [KnowledgeBaseController::class, 'deleteChunk']);
+    });
+
+    // Education Data Export
+    Route::get('/education/export-csv', [EducationController::class, 'exportCsv']);
 
     // Activity Logs
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);
