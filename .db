@@ -1,0 +1,689 @@
+// ============================================================
+// VIRTUAL GUIDE PEKON MARGODADI
+// SHARED DATABASE SCHEMA
+// PostgreSQL + pgvector
+// Updated for Full REST API & Frontend Compatibility
+// ============================================================
+
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+Enum channel_type {
+  WEB
+  WHATSAPP
+}
+
+Enum conversation_status {
+  OPEN
+  PENDING
+  ASSIGNED
+  RESOLVED
+}
+
+Enum priority_level {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+Enum sender_type {
+  USER
+  BOT
+  OPERATOR
+  SYSTEM
+}
+
+Enum operator_role {
+  ADMIN
+  OPERATOR
+}
+
+Enum operator_status {
+  ONLINE
+  OFFLINE
+}
+
+Enum hitl_event_type {
+  NEED_HUMAN
+  OPERATOR_ASSIGNED
+  OPERATOR_RESPONSE
+  TAKE_OVER
+  STATUS_CHANGE
+  RESOLVED
+}
+
+Enum research_session_status {
+  STARTED
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+Enum service_domain {
+  PUBLIC_SERVICE
+  UMKM
+  WASTE_EDUCATION
+}
+
+
+// ============================================================
+// 1. USER / CITIZEN
+// Owner: S1
+// Dipakai S2 untuk monitoring conversation.
+// ============================================================
+
+Table users {
+  user_id bigint [pk, increment]
+  anonymous_code varchar(50) [unique, not null]
+  phone_number varchar(50) // Opsional, disamarkan untuk anonimitas riset
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp
+
+  Note: 'Identitas pengguna/warga dalam sistem. Mendukung pelestarian privasi dengan kode anonim untuk riset.'
+}
+
+
+// ============================================================
+// 2. SERVICE CATEGORY
+// Owner: S1
+// Dipakai untuk kategorisasi layanan dan monitoring S2.
+// ============================================================
+
+Table service_categories {
+  category_id bigint [pk, increment]
+  parent_id bigint [ref: > service_categories.category_id]
+  name varchar(100) [not null]
+  slug varchar(100) [unique]
+  domain service_domain [not null]
+  icon varchar(50)
+  description text
+  is_active boolean [not null, default: true]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp
+
+  indexes {
+    domain
+    slug
+    is_active
+  }
+}
+
+
+// ============================================================
+// 3. PUBLIC SERVICE (LAYANAN PUBLIK & PERSURATAN)
+// Owner: S1
+// Menyimpan SOP, berkas permohonan surat, dan fasilitas desa.
+// ============================================================
+
+Table public_services {
+  service_id bigint [pk, increment]
+  category_id bigint [ref: > service_categories.category_id]
+
+  title varchar(200) [not null]
+  slug varchar(200) [unique, not null]
+  category_badge varchar(50) // e.g. 'SURAT_PENGANTAR', 'ADMINISTRASI', 'FASILITAS'
+  sub_category_badge varchar(100) // e.g. 'Sosial & Pendidikan', 'Kependudukan'
+
+  description text
+  legal_basis text // Dasar hukum/regulasi pekon
+
+  requirements jsonb // Array string daftar syarat berkas: ["FC KTP", "FC KK", ...]
+  steps jsonb // Array objek langkah alur layanan: [{step, name, desc, time, icon}]
+
+  sla_duration varchar(100) // Estimasi waktu penyelesaian: '1 Hari Kerja'
+  cost_info varchar(100) // Biaya: 'Gratis (Rp 0)'
+  officer_in_charge varchar(150) // Loket/petugas penanggung jawab: 'Loket Kasi Pelayanan'
+  download_url text // Tautan berkas blangko/formulir permohonan
+
+  tags jsonb // Array keyword tag pencarian: ["sku", "kur", "usaha"]
+  is_active boolean [not null, default: true]
+
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp
+
+  indexes {
+    category_id
+    slug
+    is_active
+  }
+
+  Note: 'Direktori resmi layanan administrasi, persuratan, dan fasilitas umum Pekon Margodadi.'
+}
+
+
+// ============================================================
+// 4. OPERATORS (APARATUR PEKON & BACK-OFFICE)
+// Owner: S2
+// ============================================================
+
+Table operators {
+  operator_id bigint [pk, increment]
+
+  name varchar(150) [not null]
+  email varchar(150) [unique, not null]
+  password varchar(255) [not null] // Untuk autentikasi REST API / JWT
+  phone varchar(50) // Nomor WhatsApp untuk koordinasi
+  avatar_url text
+
+  role operator_role [not null, default: 'OPERATOR']
+  status operator_status [not null, default: 'OFFLINE']
+  is_active boolean [not null, default: true]
+
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp
+
+  indexes {
+    email
+    role
+    status
+    is_active
+  }
+
+  Note: 'Akun aparatur pekon penanggung jawab intervensi Human-in-the-Loop dan monitoring.'
+}
+
+
+// ============================================================
+// 5. CONVERSATION
+// Shared core entity S1 + S2
+// ============================================================
+
+Table conversations {
+  conversation_id bigint [pk, increment]
+  user_id bigint [not null, ref: > users.user_id]
+  category_id bigint [ref: > service_categories.category_id]
+  assigned_operator_id bigint [ref: > operators.operator_id]
+
+  channel channel_type [not null]
+  status conversation_status [not null, default: 'OPEN']
+  priority priority_level [not null, default: 'MEDIUM']
+  needs_human boolean [not null, default: false] // Flag antrean eskalasi HITL
+
+  citizen_name varchar(150) // Alias/nama warga yang tampil pada dashboard
+  external_conversation_id varchar(150) // ID sesi WhatsApp / Chatwoot / Web session token
+
+  started_at timestamp [not null, default: `now()`]
+  last_message_at timestamp
+  resolved_at timestamp
+
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp
+
+  indexes {
+    user_id
+    category_id
+    assigned_operator_id
+    channel
+    status
+    priority
+    needs_human
+    started_at
+  }
+
+  Note: 'Pusat data percakapan warga yang terintegrasi antara Virtual Guide dan Dashboard Monitoring HITL.'
+}
+
+
+// ============================================================
+// 6. MESSAGE
+// Shared core entity S1 + S2
+// ============================================================
+
+Table messages {
+  message_id bigint [pk, increment]
+  conversation_id bigint [not null, ref: > conversations.conversation_id]
+  operator_id bigint [ref: > operators.operator_id] // Diisi jika sender_type = OPERATOR
+
+  sender_type sender_type [not null]
+  content text [not null]
+
+  // Rich metadata: RAG checkpoints, sitasi dokumen, SLA, estimasi biaya, tombol aksi, isSystemAlert
+  metadata jsonb
+
+  external_message_id varchar(150)
+  created_at timestamp [not null, default: `now()`]
+
+  indexes {
+    conversation_id
+    operator_id
+    sender_type
+    created_at
+  }
+}
+
+
+// ============================================================
+// 7. UMKM
+// Owner: S1
+// ============================================================
+
+Table umkms {
+  umkm_id bigint [pk, increment]
+  category_id bigint [ref: > service_categories.category_id]
+
+  reg_number varchar(50) [unique] // No. registrasi resmi: 'MKD-UMKM-001'
+  name varchar(150) [not null]
+  sub_title varchar(255)
+  owner_name varchar(150) [not null]
+  phone varchar(50)
+  wa_number varchar(50) // WhatsApp format internasional untuk direct CTA
+
+  address text
+  description text
+  history text // Narasi profil & komitmen usaha warga
+
+  banner_image_url text
+  gallery_urls jsonb // Array string URL foto dokumentasi & galeri
+
+  legal_certification varchar(150) // Contoh: 'P-IRT & Halal Kemenag'
+  legal_number varchar(150) // Contoh: 'ID18110002981023'
+  production_capacity varchar(100) // Contoh: '600 pouch/bln'
+  capacity_note varchar(150)
+  group_name varchar(150) // Kelompok/koperasi: 'KWT Anyam Lestari'
+  group_location varchar(150)
+
+  map_title varchar(150)
+  map_address text
+  map_url text // Google Maps link
+
+  last_verified_at timestamp // Tanggal kurasi/verifikasi aparatur pekon
+  is_active boolean [not null, default: true]
+
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp
+
+  indexes {
+    category_id
+    reg_number
+    name
+    is_active
+  }
+
+  Note: 'Katalog dan profil lengkap UMKM serta produk unggulan warga Pekon Margodadi.'
+}
+
+
+// ============================================================
+// 8. UMKM PRODUCTS
+// Owner: S1
+// ============================================================
+
+Table umkm_products {
+  product_id bigint [pk, increment]
+  umkm_id bigint [not null, ref: > umkms.umkm_id]
+
+  name varchar(150) [not null]
+  description text
+  price varchar(100) // Label harga (e.g. 'Rp 18.000')
+  image_url text
+  is_active boolean [not null, default: true]
+
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp
+
+  indexes {
+    umkm_id
+    name
+    is_active
+  }
+}
+
+
+// ============================================================
+// 9. KNOWLEDGE BASE DOCUMENT
+// Shared S1 + S3
+// S3 lebih dominan sebagai intelligence/data layer.
+// ============================================================
+
+Table kb_documents {
+  document_id bigint [pk, increment]
+
+  title varchar(255) [not null]
+  domain service_domain [not null]
+
+  source text [not null]
+  validator varchar(150)
+  version varchar(50) [not null]
+
+  updated_at timestamp [not null]
+  is_active boolean [not null, default: true]
+
+  created_at timestamp [not null, default: `now()`]
+
+  indexes {
+    domain
+    version
+    is_active
+  }
+
+  Note: 'Dokumen sumber knowledge base yang telah dikurasi dan divalidasi aparatur/tim riset.'
+}
+
+
+// ============================================================
+// 10. KNOWLEDGE BASE CHUNKS
+// Owner: S3
+// Digunakan S1 melalui RAG.
+// ============================================================
+
+Table kb_chunks {
+  chunk_id bigint [pk, increment]
+  document_id bigint [not null, ref: > kb_documents.document_id]
+
+  chunk_index int [not null]
+  content text [not null]
+
+  // PostgreSQL + pgvector
+  embedding vector
+
+  metadata jsonb
+
+  created_at timestamp [not null, default: `now()`]
+
+  indexes {
+    document_id
+    chunk_index
+  }
+
+  Note: 'Potongan dokumen yang di-vektorisasi dan digunakan dalam proses retrieval RAG.'
+}
+
+
+// ============================================================
+// 11. RAG CONFIGURATION
+// Owner: S3
+// Mendukung versioning konfigurasi eksperimen RAG.
+// ============================================================
+
+Table rag_configurations {
+  rag_config_id bigint [pk, increment]
+
+  version varchar(50) [unique, not null]
+
+  embedding_model varchar(150)
+  llm_model varchar(150)
+
+  chunking_config jsonb
+  retrieval_config jsonb
+  generation_config jsonb
+
+  is_active boolean [not null, default: false]
+
+  created_at timestamp [not null, default: `now()`]
+}
+
+
+// ============================================================
+// 12. RAG INTERACTION
+// Shared S1 + S3
+// S1 menggunakan hasilnya, S3 mengevaluasi performanya.
+// ============================================================
+
+Table rag_interactions {
+  rag_interaction_id bigint [pk, increment]
+
+  message_id bigint [not null, ref: > messages.message_id]
+  rag_config_id bigint [ref: > rag_configurations.rag_config_id]
+
+  query text [not null]
+  response text
+
+  status varchar(50)
+  latency_ms int
+
+  created_at timestamp [not null, default: `now()`]
+
+  indexes {
+    message_id
+    rag_config_id
+    created_at
+  }
+}
+
+
+// ============================================================
+// 13. RAG RETRIEVAL
+// Owner: S3
+// Menyimpan chunk yang diambil oleh retrieval.
+// ============================================================
+
+Table rag_retrievals {
+  retrieval_id bigint [pk, increment]
+
+  rag_interaction_id bigint [not null, ref: > rag_interactions.rag_interaction_id]
+  chunk_id bigint [not null, ref: > kb_chunks.chunk_id]
+
+  rank int
+  similarity_score decimal(10,6)
+
+  created_at timestamp [not null, default: `now()`]
+
+  indexes {
+    rag_interaction_id
+    chunk_id
+  }
+}
+
+
+// ============================================================
+// 14. CONVERSATION ASSIGNMENT
+// Owner: S2
+// ============================================================
+
+Table conversation_assignments {
+  assignment_id bigint [pk, increment]
+
+  conversation_id bigint [not null, ref: > conversations.conversation_id]
+  operator_id bigint [not null, ref: > operators.operator_id]
+
+  assigned_at timestamp [not null, default: `now()`]
+  unassigned_at timestamp
+
+  created_at timestamp [not null, default: `now()`]
+
+  indexes {
+    conversation_id
+    operator_id
+  }
+}
+
+
+// ============================================================
+// 15. HITL EVENTS
+// Owner: S2
+// Dipicu dari conversation/RAG atau tindakan operator.
+// ============================================================
+
+Table hitl_events {
+  event_id bigint [pk, increment]
+
+  conversation_id bigint [not null, ref: > conversations.conversation_id]
+  operator_id bigint [ref: > operators.operator_id]
+
+  event_type hitl_event_type [not null]
+  notes text
+
+  created_at timestamp [not null, default: `now()`]
+
+  indexes {
+    conversation_id
+    operator_id
+    event_type
+    created_at
+  }
+}
+
+
+// ============================================================
+// 16. FEEDBACK
+// Owner: S1
+// Dipakai untuk evaluasi pengalaman pengguna & performa RAG.
+// ============================================================
+
+Table feedback {
+  feedback_id bigint [pk, increment]
+
+  conversation_id bigint [not null, ref: > conversations.conversation_id]
+  message_id bigint [ref: > messages.message_id] // Opsional jika rating per bot message
+  user_id bigint [not null, ref: > users.user_id]
+
+  rating int // 1-5 bintang atau 1=Up, -1=Down
+  comment text
+
+  created_at timestamp [not null, default: `now()`]
+
+  indexes {
+    conversation_id
+    message_id
+    user_id
+  }
+}
+
+
+// ============================================================
+// 17. RESEARCH SESSION
+// Owner: S1
+// Mendukung penelitian Kesling / PKM & Skripsi 2.
+// ============================================================
+
+Table research_sessions {
+  research_session_id bigint [pk, increment]
+
+  user_id bigint [not null, ref: > users.user_id]
+  conversation_id bigint [ref: > conversations.conversation_id]
+
+  anonymous_code varchar(50) [not null]
+  education_version varchar(50)
+  quiz_score decimal(5,2) // Nilai skor evaluasi kuis pemahaman warga (e.g. 85.00, 100.00)
+
+  status research_session_status [not null, default: 'STARTED']
+
+  started_at timestamp [not null, default: `now()`]
+  completed_at timestamp
+
+  created_at timestamp [not null, default: `now()`]
+
+  indexes {
+    user_id
+    conversation_id
+    anonymous_code
+    status
+  }
+}
+
+
+// ============================================================
+// 18. EDUCATION TOPICS
+// Owner: S1
+// Materi berasal dari knowledge base tervalidasi.
+// ============================================================
+
+Table education_topics {
+  topic_id bigint [pk, increment]
+
+  name varchar(150) [not null]
+  slug varchar(150) [unique]
+  description text
+
+  knowledge_base_version varchar(50)
+  sequence_order int
+  is_active boolean [not null, default: true]
+
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp
+
+  indexes {
+    slug
+    is_active
+  }
+}
+
+
+// ============================================================
+// 19. EDUCATION EXPOSURES
+// Owner: S1
+// Dipantau S2 untuk efektivitas interaksi edukasi.
+// ============================================================
+
+Table education_exposures {
+  exposure_id bigint [pk, increment]
+
+  research_session_id bigint [not null, ref: > research_sessions.research_session_id]
+  topic_id bigint [not null, ref: > education_topics.topic_id]
+
+  interaction_count int [not null, default: 0]
+  quiz_score decimal(5,2) // Nilai per topik
+
+  started_at timestamp
+  completed_at timestamp
+
+  created_at timestamp [not null, default: `now()`]
+
+  indexes {
+    research_session_id
+    topic_id
+  }
+}
+
+
+// ============================================================
+// 20. ACTIVITY LOGS / AUDIT TRAIL
+// Owner: S2
+// Audit trail tindakan aparatur & sistem pada dashboard.
+// ============================================================
+
+Table activity_logs {
+  log_id bigint [pk, increment]
+
+  operator_id bigint [ref: > operators.operator_id] // Null jika aksi otomatis sistem
+  actor_name varchar(150) [not null] // e.g. 'Siti Aminah' atau 'SISTEM (AI RAG)'
+
+  action varchar(50) [not null] // e.g. 'TAKE_OVER', 'OPERATOR_RESPONSE', 'STATUS_CHANGE', 'LOGIN', 'ESCALATION_TRIGGER'
+  target varchar(100) // e.g. '#CV-00123' atau 'System Auth'
+  description text [not null]
+  channel channel_type
+
+  created_at timestamp [not null, default: `now()`]
+
+  indexes {
+    operator_id
+    action
+    created_at
+  }
+}
+
+
+// ============================================================
+// 21. SYSTEM / API LOG
+// Shared
+// Mendukung logging integrasi, gateway, dan troubleshooting.
+// ============================================================
+
+Table system_logs {
+  log_id bigint [pk, increment]
+
+  conversation_id bigint [ref: > conversations.conversation_id]
+  message_id bigint [ref: > messages.message_id]
+
+  service varchar(100) // e.g. 'CHATWOOT_GATEWAY', 'RAG_ENGINE', 'WEBHOOK'
+  event_type varchar(100)
+
+  status varchar(50)
+  error_code varchar(100)
+
+  latency_ms int
+  metadata jsonb
+
+  created_at timestamp [not null, default: `now()`]
+
+  indexes {
+    conversation_id
+    message_id
+    service
+    event_type
+    created_at
+  }
+}
