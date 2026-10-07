@@ -17,6 +17,10 @@ class DatabaseSeeder extends Seeder
             OperatorSeeder::class,
             ServiceCategorySeeder::class,
             ConversationSeeder::class,
+            PublicServiceSeeder::class,
+            UmkmSeeder::class,
+            EducationSeeder::class,
+            KbDocumentSeeder::class,
         ]);
     }
 }

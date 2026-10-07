@@ -48,6 +48,11 @@ class Operator extends Authenticatable
         return $this->hasMany(Conversation::class, 'assigned_operator_id', 'operator_id');
     }
 
+    public function assignedConversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class, 'assigned_operator_id', 'operator_id');
+    }
+
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class, 'operator_id', 'operator_id');

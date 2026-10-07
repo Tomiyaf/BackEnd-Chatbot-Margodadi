@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\ChannelType;
 use App\Enums\OperatorRole;
 use App\Enums\OperatorStatus;
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Operator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,6 +35,16 @@ class AuthController extends Controller
             'role' => isset($validated['role']) ? OperatorRole::from($validated['role']) : OperatorRole::OPERATOR,
             'status' => OperatorStatus::OFFLINE,
             'is_active' => true,
+        ]);
+
+        ActivityLog::create([
+            'operator_id' => $operator->operator_id,
+            'actor_name' => $operator->name,
+            'action' => 'REGISTER',
+            'target' => '#OP-'.str_pad($operator->operator_id, 2, '0', STR_PAD_LEFT),
+            'description' => "Pendaftaran aparatur baru: {$operator->name} ({$operator->role->value})",
+            'channel' => ChannelType::WEB,
+            'created_at' => now(),
         ]);
 
         $token = $operator->createToken('operator_auth_token')->plainTextToken;
@@ -89,6 +101,16 @@ class AuthController extends Controller
 
         $token = $operator->createToken('operator_auth_token')->plainTextToken;
 
+        ActivityLog::create([
+            'operator_id' => $operator->operator_id,
+            'actor_name' => $operator->name,
+            'action' => 'LOGIN',
+            'target' => '#OP-'.str_pad($operator->operator_id, 2, '0', STR_PAD_LEFT),
+            'description' => "Aparatur {$operator->name} ({$operator->role->value}) berhasil masuk ke Back-Office Pekon",
+            'channel' => ChannelType::WEB,
+            'created_at' => now(),
+        ]);
+
         return response()->json([
             'status' => 'success',
             'message' => 'Login successful',
@@ -118,7 +140,19 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        if ($user) {
+            ActivityLog::create([
+                'operator_id' => $user->operator_id,
+                'actor_name' => $user->name,
+                'action' => 'LOGOUT',
+                'target' => '#OP-'.str_pad($user->operator_id, 2, '0', STR_PAD_LEFT),
+                'description' => "Aparatur {$user->name} keluar (logout) dari sesi Back-Office",
+                'channel' => ChannelType::WEB,
+                'created_at' => now(),
+            ]);
+            $user->currentAccessToken()->delete();
+        }
 
         return response()->json([
             'status' => 'success',
