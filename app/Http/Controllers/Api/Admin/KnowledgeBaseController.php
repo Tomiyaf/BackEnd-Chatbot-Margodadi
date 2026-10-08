@@ -62,7 +62,20 @@ class KnowledgeBaseController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = KbDocument::withCount('chunks')->orderBy('updated_at', 'desc');
+        $query = KbDocument::query()
+            ->select([
+                'document_id',
+                'title',
+                'domain',
+                'source',
+                'validator',
+                'version',
+                'is_active',
+                'created_at',
+                'updated_at',
+            ])
+            ->withCount('chunks')
+            ->orderBy('updated_at', 'desc');
 
         if ($domain = $request->query('domain')) {
             if (strtoupper($domain) !== 'ALL') {
@@ -328,19 +341,23 @@ class KnowledgeBaseController extends Controller
     }
 
     /**
-     * Re-index all active knowledge documents.
+     * Re-index all active knowledge documents using lazyById batching.
      */
     public function reindexAll(Request $request): JsonResponse
     {
-        $documents = KbDocument::with('chunks')->where('is_active', true)->get();
         $totalChunks = 0;
+        $totalDocs = 0;
 
-        foreach ($documents as $doc) {
-            $chunkTexts = $doc->chunks->pluck('content')->toArray();
-            if (!empty($chunkTexts)) {
-                $totalChunks += $this->chunkingService->processAndSaveChunks($doc, $chunkTexts);
-            }
-        }
+        // Stream batch per 20 documents using PHP Generators
+        KbDocument::where('is_active', true)
+            ->lazyById(20)
+            ->each(function (KbDocument $doc) use (&$totalChunks, &$totalDocs) {
+                $chunkTexts = $doc->chunks()->pluck('content')->toArray();
+                if (!empty($chunkTexts)) {
+                    $totalChunks += $this->chunkingService->processAndSaveChunks($doc, $chunkTexts);
+                }
+                $totalDocs++;
+            });
 
         $operator = $request->user();
         ActivityLog::create([
@@ -348,16 +365,16 @@ class KnowledgeBaseController extends Controller
             'actor_name' => $operator?->name ?? 'Aparatur Pekon',
             'action' => 'VECTOR_REINDEX_ALL',
             'target' => '#ALL-DOCS',
-            'description' => "Sinkronisasi & re-indexing menyeluruh seluruh basis data vektor ({$documents->count()} dokumen, {$totalChunks} chunks)",
+            'description' => "Sinkronisasi & re-indexing menyeluruh seluruh basis data vektor ({$totalDocs} dokumen, {$totalChunks} chunks)",
             'channel' => ChannelType::WEB,
             'created_at' => now(),
         ]);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Seluruh basis data vektor berhasil disinkronkan (' . $documents->count() . ' dokumen, ' . $totalChunks . ' chunks terindeks).',
+            'message' => "Sinkronisasi ulang basis pengetahuan selesai. {$totalDocs} dokumen diproses, {$totalChunks} chunks vektor terindeks.",
             'data' => [
-                'total_documents' => $documents->count(),
+                'total_documents' => $totalDocs,
                 'total_chunks' => $totalChunks,
             ],
         ]);

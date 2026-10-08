@@ -15,7 +15,7 @@ class ActivityLogController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = ActivityLog::with('operator')->latest('created_at');
+        $query = ActivityLog::with('operator:operator_id,name')->latest('created_at');
 
         // Action Filter
         if ($action = $request->query('action')) {

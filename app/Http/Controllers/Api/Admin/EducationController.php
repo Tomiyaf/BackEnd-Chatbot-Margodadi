@@ -81,11 +81,10 @@ class EducationController extends Controller
             ];
         });
 
-        // Compute global statistics
-        $allSessions = ResearchSession::with('exposures.topic')->get();
-        $totalSessions = $allSessions->count();
-        $completedSessions = $allSessions->where('status', ResearchSessionStatus::COMPLETED)->count();
-        $inProgressSessions = $allSessions->where('status', ResearchSessionStatus::IN_PROGRESS)->count();
+        // Compute global statistics directly via database aggregation (No memory-heavy get())
+        $totalSessions = ResearchSession::count();
+        $completedSessions = ResearchSession::where('status', ResearchSessionStatus::COMPLETED)->count();
+        $inProgressSessions = ResearchSession::where('status', ResearchSessionStatus::IN_PROGRESS)->count();
         $completionRate = $totalSessions > 0 ? round(($completedSessions / $totalSessions) * 100, 1) : 0;
 
         // Dynamic Growth Trend (This 7 days vs previous 7 days)
@@ -102,10 +101,9 @@ class EducationController extends Controller
             $growthType = $thisWeekCount > 0 ? 'positive' : 'neutral';
         }
 
-        // Average Quiz Score
-        $completedWithScore = $allSessions->whereNotNull('quiz_score');
-        $avgScore = $completedWithScore->count() > 0 ? round($completedWithScore->avg('quiz_score'), 1) : null;
-        $avgScoreDisplay = $avgScore !== null ? $avgScore . '%' : '-';
+        // Average Quiz Score directly via SQL AVG
+        $avgScore = ResearchSession::whereNotNull('quiz_score')->avg('quiz_score');
+        $avgScoreDisplay = $avgScore !== null ? round($avgScore, 1) . '%' : '-';
         $completionTrend = $avgScore !== null ? "Rata-rata skor {$avgScoreDisplay}" : 'Tingkat kelulusan modul';
 
         // Topics breakdown
@@ -175,7 +173,7 @@ class EducationController extends Controller
     }
 
     /**
-     * Export education research sessions as CSV stream.
+     * Export education research sessions as CSV stream using LazyCollection cursor.
      */
     public function exportCsv(Request $request): StreamedResponse
     {
@@ -203,7 +201,7 @@ class EducationController extends Controller
             $headers[] = $fieldHeaderMap[$f] ?? $f;
         }
 
-        $query = ResearchSession::with(['exposures.topic'])->orderBy('started_at', 'desc');
+        $query = ResearchSession::with(['exposures.topic', 'conversation'])->orderBy('started_at', 'desc');
         if ($period === 'MONTH') {
             $query->where('started_at', '>=', Carbon::now()->subDays(30));
         }
@@ -226,37 +224,36 @@ class EducationController extends Controller
             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
             fputcsv($handle, $headers);
 
-            $query->chunk(100, function ($sessions) use ($handle, $selectedFields) {
-                foreach ($sessions as $session) {
-                    $firstExposure = $session->exposures->first();
-                    $topicName = $firstExposure && $firstExposure->topic
-                        ? $firstExposure->topic->name
-                        : 'Edukasi Pengelolaan Sampah';
+            // True Lazy Streaming via PHP Generator cursor
+            $query->cursor()->each(function (ResearchSession $session) use ($handle, $selectedFields) {
+                $firstExposure = $session->exposures->first();
+                $topicName = $firstExposure && $firstExposure->topic
+                    ? $firstExposure->topic->name
+                    : 'Edukasi Pengelolaan Sampah';
 
-                    $interactionCount = $session->exposures->sum('interaction_count');
-                    if ($interactionCount === 0 && $session->conversation) {
-                        $interactionCount = $session->conversation->messages()->count();
-                    }
-
-                    $dataMap = [
-                        'respondentCode' => $session->anonymous_code,
-                        'sessionId' => 'RS-' . str_pad($session->research_session_id, 5, '0', STR_PAD_LEFT),
-                        'topic' => $topicName,
-                        'interactionCount' => $interactionCount,
-                        'status' => $session->status instanceof ResearchSessionStatus ? $session->status->value : (string) $session->status,
-                        'quizScore' => $session->quiz_score !== null ? round($session->quiz_score) . '%' : '-',
-                        'materialVersion' => $session->education_version ?? 'v2.1-PKM2026',
-                        'startedAt' => $session->started_at ? Carbon::parse($session->started_at)->format('Y-m-d H:i:s') : '-',
-                        'completedAt' => $session->completed_at ? Carbon::parse($session->completed_at)->format('Y-m-d H:i:s') : '-',
-                    ];
-
-                    $row = [];
-                    foreach ($selectedFields as $fieldKey) {
-                        $row[] = $dataMap[$fieldKey] ?? '';
-                    }
-
-                    fputcsv($handle, $row);
+                $interactionCount = $session->exposures->sum('interaction_count');
+                if ($interactionCount === 0 && $session->conversation) {
+                    $interactionCount = $session->conversation->messages()->count();
                 }
+
+                $dataMap = [
+                    'respondentCode' => $session->anonymous_code,
+                    'sessionId' => 'RS-' . str_pad($session->research_session_id, 5, '0', STR_PAD_LEFT),
+                    'topic' => $topicName,
+                    'interactionCount' => $interactionCount,
+                    'status' => $session->status instanceof ResearchSessionStatus ? $session->status->value : (string) $session->status,
+                    'quizScore' => $session->quiz_score !== null ? round($session->quiz_score) . '%' : '-',
+                    'materialVersion' => $session->education_version ?? 'v2.1-PKM2026',
+                    'startedAt' => $session->started_at ? Carbon::parse($session->started_at)->format('Y-m-d H:i:s') : '-',
+                    'completedAt' => $session->completed_at ? Carbon::parse($session->completed_at)->format('Y-m-d H:i:s') : '-',
+                ];
+
+                $row = [];
+                foreach ($selectedFields as $fieldKey) {
+                    $row[] = $dataMap[$fieldKey] ?? '';
+                }
+
+                fputcsv($handle, $row);
             });
 
             fclose($handle);
