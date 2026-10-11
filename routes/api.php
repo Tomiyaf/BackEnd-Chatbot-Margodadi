@@ -9,12 +9,32 @@ use App\Http\Controllers\Api\Admin\KnowledgeBaseController;
 use App\Http\Controllers\Api\Admin\OperatorController;
 use App\Http\Controllers\Api\Admin\SettingController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\GlobalSearchController;
+use App\Http\Controllers\Api\PublicServiceController as DirectPublicServiceController;
+use App\Http\Controllers\Api\UmkmController as DirectUmkmController;
 use App\Http\Controllers\Api\Public\ChatbotController;
 use App\Http\Controllers\Api\Public\PublicServiceController;
 use App\Http\Controllers\Api\Public\UmkmController;
 use Illuminate\Support\Facades\Route;
 
-// Public Auth Routes
+// Global Search (Homepage Search Bar)
+Route::get('/search', [GlobalSearchController::class, 'search']);
+
+// Public Services Routes (Guest / Citizen Access)
+Route::prefix('public-services')->group(function () {
+    Route::get('/', [DirectPublicServiceController::class, 'index']);
+    Route::get('/categories', [DirectPublicServiceController::class, 'categories']);
+    Route::get('/{slug}', [DirectPublicServiceController::class, 'show']);
+});
+
+// UMKM Potensi Desa Routes (Guest / Citizen Access)
+Route::prefix('umkms')->group(function () {
+    Route::get('/', [DirectUmkmController::class, 'index']);
+    Route::get('/categories', [DirectUmkmController::class, 'categories']);
+    Route::get('/{id}', [DirectUmkmController::class, 'show']);
+});
+
+// Operator Auth Routes
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);

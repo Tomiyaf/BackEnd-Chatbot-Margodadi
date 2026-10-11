@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\ServiceDomain;
 use App\Models\ServiceCategory;
 use App\Models\Umkm;
 use App\Models\UmkmProduct;
@@ -9,13 +10,63 @@ use Illuminate\Database\Seeder;
 
 class UmkmSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     */
     public function run(): void
     {
-        $umkmCat = ServiceCategory::where('slug', 'potensi-umkm')->first();
+        // 1. Kategori Makanan & Olahan
+        $catKuliner = ServiceCategory::firstOrCreate(
+            ['slug' => 'kuliner-olahan-pangan'],
+            [
+                'name' => 'Kuliner & Olahan Pangan',
+                'domain' => ServiceDomain::UMKM,
+                'icon' => 'utensils',
+                'description' => 'Produk kuliner, camilan khas, keripik, dan makanan olahan warga Margodadi.',
+                'is_active' => true,
+            ]
+        );
+
+        // 2. Kategori Kerajinan & Anyaman
+        $catKerajinan = ServiceCategory::firstOrCreate(
+            ['slug' => 'kerajinan-kreatif'],
+            [
+                'name' => 'Kerajinan & Produk Kreatif',
+                'domain' => ServiceDomain::UMKM,
+                'icon' => 'gift',
+                'description' => 'Kerajinan anyaman bambu, produk jahit/konveksi, dan cinderamata warga.',
+                'is_active' => true,
+            ]
+        );
+
+        // 3. Kategori Pertanian & Hasil Kebun
+        $catPertanian = ServiceCategory::firstOrCreate(
+            ['slug' => 'hasil-bumi-pertanian'],
+            [
+                'name' => 'Hasil Bumi & Pertanian',
+                'domain' => ServiceDomain::UMKM,
+                'icon' => 'sprout',
+                'description' => 'Komoditas pertanian unggulan, bibit tanaman, dan pupuk organik pekon.',
+                'is_active' => true,
+            ]
+        );
+
+        // 4. Potensi UMKM Umum
+        $catUmkm = ServiceCategory::firstOrCreate(
+            ['slug' => 'potensi-umkm'],
+            [
+                'name' => 'Pemberdayaan & Potensi UMKM',
+                'domain' => ServiceDomain::UMKM,
+                'icon' => 'storefront',
+                'description' => 'Informasi pendaftaran, etalase, dan legalitas produk UMKM Pekon Margodadi',
+                'is_active' => true,
+            ]
+        );
 
         $umkms = [
             [
                 'reg_number' => 'MKD-UMKM-001',
+                'category_id' => $catKuliner->category_id,
                 'name' => 'Kopi Robusta Lereng Margodadi',
                 'sub_title' => 'Usaha Pengolahan Kopi Rakyat Berkelanjutan Sejak 2017',
                 'owner_name' => 'Bapak Supardi',
@@ -41,13 +92,14 @@ class UmkmSeeder extends Seeder
                 'last_verified_at' => now()->subDays(15),
                 'is_active' => true,
                 'products' => [
-                    ['name' => 'Kopi Bubuk 250gr', 'price' => 35000, 'description' => 'Bubuk halus aroma cokelat'],
-                    ['name' => 'Roasted Beans 500gr', 'price' => 65000, 'description' => 'Biji sangrai medium roast'],
-                    ['name' => 'Green Bean Grade 1 1kg', 'price' => 85000, 'description' => 'Biji mentah pilihan'],
+                    ['name' => 'Kopi Bubuk 250gr', 'price' => '35000', 'description' => 'Bubuk halus aroma cokelat'],
+                    ['name' => 'Roasted Beans 500gr', 'price' => '65000', 'description' => 'Biji sangrai medium roast'],
+                    ['name' => 'Green Bean Grade 1 1kg', 'price' => '85000', 'description' => 'Biji mentah pilihan'],
                 ],
             ],
             [
                 'reg_number' => 'MKD-UMKM-002',
+                'category_id' => $catKerajinan->category_id,
                 'name' => 'Anyaman Bambu Lestari',
                 'sub_title' => 'Sentra Kerajinan Ramah Lingkungan & Pemberdayaan Perempuan',
                 'owner_name' => 'Ibu Sri Utami',
@@ -72,13 +124,14 @@ class UmkmSeeder extends Seeder
                 'last_verified_at' => now()->subDays(12),
                 'is_active' => true,
                 'products' => [
-                    ['name' => 'Besek Bambu', 'price' => 8000, 'description' => 'Wadah berkatan ramah lingkungan'],
-                    ['name' => 'Tudung Saji Etnik', 'price' => 45000, 'description' => 'Penutup makanan tradisional'],
-                    ['name' => 'Tas Anyam', 'price' => 30000, 'description' => 'Tas jinjing etnik'],
+                    ['name' => 'Besek Bambu', 'price' => '8000', 'description' => 'Wadah berkatan ramah lingkungan'],
+                    ['name' => 'Tudung Saji Etnik', 'price' => '45000', 'description' => 'Penutup makanan tradisional'],
+                    ['name' => 'Tas Anyam', 'price' => '30000', 'description' => 'Tas jinjing etnik'],
                 ],
             ],
             [
                 'reg_number' => 'MKD-UMKM-003',
+                'category_id' => $catKuliner->category_id,
                 'name' => 'Keripik Pisang Tanduk "Barokah Rasa"',
                 'sub_title' => 'Oleh-oleh Gurih & Manis Renyah Khas Perkebunan Margodadi',
                 'owner_name' => 'Ibu Siti Rahayu',
@@ -103,13 +156,14 @@ class UmkmSeeder extends Seeder
                 'last_verified_at' => now()->subDays(8),
                 'is_active' => true,
                 'products' => [
-                    ['name' => 'Cokelat Lumer 200g', 'price' => 18000, 'description' => 'Baluran coklat pekat'],
-                    ['name' => 'Manis Gurih 200g', 'price' => 15000, 'description' => 'Rasa klasik pisang tanduk'],
-                    ['name' => 'Balado Pedas Manis 200g', 'price' => 16000, 'description' => 'Pedas manis gurih'],
+                    ['name' => 'Cokelat Lumer 200g', 'price' => '18000', 'description' => 'Baluran coklat pekat'],
+                    ['name' => 'Manis Gurih 200g', 'price' => '15000', 'description' => 'Rasa klasik pisang tanduk'],
+                    ['name' => 'Balado Pedas Manis 200g', 'price' => '16000', 'description' => 'Pedas manis gurih'],
                 ],
             ],
             [
                 'reg_number' => 'MKD-UMKM-004',
+                'category_id' => $catPertanian->category_id,
                 'name' => 'Madu Alami Hutan "Sari Lebah"',
                 'sub_title' => 'Madu Hutan Liar Murni & Klanceng Trigona Bebas Campuran',
                 'owner_name' => 'Kang Asep Sunandar',
@@ -134,13 +188,14 @@ class UmkmSeeder extends Seeder
                 'last_verified_at' => now()->subDays(6),
                 'is_active' => true,
                 'products' => [
-                    ['name' => 'Madu Hutan 350ml', 'price' => 85000, 'description' => 'Madu liar murni'],
-                    ['name' => 'Madu Klanceng 250ml', 'price' => 95000, 'description' => 'Madu asam manis trigona'],
-                    ['name' => 'Sarang Madu Sisir 250g', 'price' => 70000, 'description' => 'Sarang madu segar'],
+                    ['name' => 'Madu Hutan 350ml', 'price' => '85000', 'description' => 'Madu liar murni'],
+                    ['name' => 'Madu Klanceng 250ml', 'price' => '95000', 'description' => 'Madu asam manis trigona'],
+                    ['name' => 'Sarang Madu Sisir 250g', 'price' => '70000', 'description' => 'Sarang madu segar'],
                 ],
             ],
             [
                 'reg_number' => 'MKD-UMKM-005',
+                'category_id' => $catKerajinan->category_id,
                 'name' => 'Batik Tulis Kopi & Lada',
                 'sub_title' => 'Kain Etnik Kontemporer Pewarna Alami & Corak Agrikultur',
                 'owner_name' => 'Paguyuban Putri Margodadi',
@@ -165,13 +220,14 @@ class UmkmSeeder extends Seeder
                 'last_verified_at' => now()->subDays(4),
                 'is_active' => true,
                 'products' => [
-                    ['name' => 'Kain Panjang 2.2m', 'price' => 175000, 'description' => 'Kain primissima halus'],
-                    ['name' => 'Syal Batik Sutra', 'price' => 65000, 'description' => 'Aksesoris etnik sutra'],
-                    ['name' => 'Kemeja Batik Pria Siap Pakai', 'price' => 220000, 'description' => 'Jahitan semi tailor'],
+                    ['name' => 'Kain Panjang 2.2m', 'price' => '175000', 'description' => 'Kain primissima halus'],
+                    ['name' => 'Syal Batik Sutra', 'price' => '65000', 'description' => 'Aksesoris etnik sutra'],
+                    ['name' => 'Kemeja Batik Pria Siap Pakai', 'price' => '220000', 'description' => 'Jahitan semi tailor'],
                 ],
             ],
             [
                 'reg_number' => 'MKD-UMKM-006',
+                'category_id' => $catPertanian->category_id,
                 'name' => 'Bibit Buah Unggul "Tani Makmur"',
                 'sub_title' => 'Nursery Okulasi Bibit Alpukat Aligator & Durian Unggulan',
                 'owner_name' => 'Pak Joko Prayitno',
@@ -196,13 +252,14 @@ class UmkmSeeder extends Seeder
                 'last_verified_at' => now()->subDays(2),
                 'is_active' => true,
                 'products' => [
-                    ['name' => 'Bibit Alpukat Aligator', 'price' => 35000, 'description' => 'Tinggi 60-80cm sambung pucuk'],
-                    ['name' => 'Durian Bawor Okulasi', 'price' => 60000, 'description' => 'Cepat berbuah 3-4 tahun'],
-                    ['name' => 'Bibit Mangga Kiojay', 'price' => 40000, 'description' => 'Mangga jumbo manis'],
+                    ['name' => 'Bibit Alpukat Aligator', 'price' => '35000', 'description' => 'Tinggi 60-80cm sambung pucuk'],
+                    ['name' => 'Durian Bawor Okulasi', 'price' => '60000', 'description' => 'Cepat berbuah 3-4 tahun'],
+                    ['name' => 'Bibit Mangga Kiojay', 'price' => '40000', 'description' => 'Mangga jumbo manis'],
                 ],
             ],
             [
                 'reg_number' => 'MKD-UMKM-007',
+                'category_id' => $catUmkm->category_id,
                 'name' => 'Bengkel Las & Mesin Pertanian "Karya Mandiri"',
                 'sub_title' => 'Jasa Fabrikasi Alat Perkebunan, Pompa & Konstruksi Besi',
                 'owner_name' => 'Mas Budi Santoso',
@@ -227,9 +284,9 @@ class UmkmSeeder extends Seeder
                 'last_verified_at' => now()->subDay(),
                 'is_active' => true,
                 'products' => [
-                    ['name' => 'Servis Mesin Pompa & Traktor', 'price' => 50000, 'description' => 'Tune up & perbaikan'],
-                    ['name' => 'Kanopi & Pagar Minimalis', 'price' => 275000, 'description' => 'Harga per meter persegi'],
-                    ['name' => 'Gerobak Angkut Sawit/Kopi', 'price' => 650000, 'description' => 'Besi galvanis kokoh'],
+                    ['name' => 'Servis Mesin Pompa & Traktor', 'price' => '50000', 'description' => 'Tune up & perbaikan'],
+                    ['name' => 'Kanopi & Pagar Minimalis', 'price' => '275000', 'description' => 'Harga per meter persegi'],
+                    ['name' => 'Gerobak Angkut Sawit/Kopi', 'price' => '650000', 'description' => 'Besi galvanis kokoh'],
                 ],
             ],
         ];
@@ -237,8 +294,6 @@ class UmkmSeeder extends Seeder
         foreach ($umkms as $item) {
             $products = $item['products'];
             unset($item['products']);
-
-            $item['category_id'] = $umkmCat?->category_id;
 
             $umkm = Umkm::updateOrCreate(
                 ['reg_number' => $item['reg_number']],
