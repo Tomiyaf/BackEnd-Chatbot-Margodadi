@@ -1,3 +1,4 @@
+# Laravel
 /.phpunit.cache
 /node_modules
 /public/build
@@ -23,3 +24,37 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Local config and secrets
+!.env.example
+
+# Runtime files
+uploads/
+logs/
+*.log
+
+# Local databases and vector stores
+*.db
+*.sqlite
+Vector.db/
+
+# Local/private RAG assets
+Data/
+models/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
