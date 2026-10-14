@@ -294,7 +294,23 @@ class ConversationController extends Controller
 
         $conv->save();
 
-        // 3. Log Activity
+        // 3. Jika kanal percakapan adalah WhatsApp, kirim balasan operator ke warga via WAHA
+        if ($conv->channel === ChannelType::WHATSAPP && ! empty($conv->user?->phone_number)) {
+            try {
+                app(\App\Services\WahaService::class)->sendMessage(
+                    $conv->user->phone_number,
+                    $validated['content']
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Gagal meneruskan balasan operator ke WAHA', [
+                    'conversation_id' => $conv->conversation_id,
+                    'phone' => $conv->user->phone_number,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // 4. Log Activity
         ActivityLog::create([
             'operator_id' => $operator->operator_id,
             'actor_name' => $operator->name,

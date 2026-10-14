@@ -15,7 +15,11 @@ use App\Http\Controllers\Api\UmkmController as DirectUmkmController;
 use App\Http\Controllers\Api\Public\ChatbotController;
 use App\Http\Controllers\Api\Public\PublicServiceController;
 use App\Http\Controllers\Api\Public\UmkmController;
+use App\Http\Controllers\Api\Webhook\WahaWebhookController;
 use Illuminate\Support\Facades\Route;
+
+// WAHA (WhatsApp HTTP API) Webhook
+Route::post('/webhook/waha', [WahaWebhookController::class, 'handle']);
 
 // Global Search (Homepage Search Bar)
 Route::get('/search', [GlobalSearchController::class, 'search']);
