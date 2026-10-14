@@ -8,6 +8,7 @@ from src.db import get_connection
 
 
 def main() -> None:
+    target_dim = EMBEDDING_DIMENSION
     schema_path = Path(__file__).with_name("schema.sql")
     schema_sql = schema_path.read_text(encoding="utf-8")
 

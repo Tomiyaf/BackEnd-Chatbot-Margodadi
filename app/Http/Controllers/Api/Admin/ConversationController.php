@@ -14,11 +14,15 @@ use App\Models\ConversationAssignment;
 use App\Models\HitlEvent;
 use App\Models\Message;
 use App\Models\Operator;
+use App\Services\WahaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ConversationController extends Controller
 {
+    public function __construct(
+        protected WahaService $wahaService
+    ) {}
     /**
      * Display a listing of conversations with multi-criteria filtering.
      */
@@ -294,20 +298,10 @@ class ConversationController extends Controller
 
         $conv->save();
 
-        // 3. Jika kanal percakapan adalah WhatsApp, kirim balasan operator ke warga via WAHA
-        if ($conv->channel === ChannelType::WHATSAPP && ! empty($conv->user?->phone_number)) {
-            try {
-                app(\App\Services\WahaService::class)->sendMessage(
-                    $conv->user->phone_number,
-                    $validated['content']
-                );
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Gagal meneruskan balasan operator ke WAHA', [
-                    'conversation_id' => $conv->conversation_id,
-                    'phone' => $conv->user->phone_number,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+        // 3. If WhatsApp channel, forward reply via WAHA
+        if ($conv->channel === ChannelType::WHATSAPP && ! empty($conv->external_conversation_id)) {
+            $waFormattedText = "*Balasan Petugas Pekon ({$operator->name}):*\n\n" . $validated['content'];
+            $this->wahaService->sendText($conv->external_conversation_id, $waFormattedText);
         }
 
         // 4. Log Activity
@@ -452,6 +446,127 @@ class ConversationController extends Controller
                     'avatar' => $targetOperator->avatar_url,
                 ],
                 'status' => $conv->status?->value,
+            ],
+        ]);
+    }
+
+    /**
+     * Toggle intervention mode between Operator (Human Takeover) and AI (Bot Resume).
+     */
+    public function toggleInterventionMode(Request $request, string|int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'mode' => ['required', 'string', 'in:OPERATOR,AI,operator,ai,HUMAN,BOT,human,bot'],
+            'notes' => ['nullable', 'string'],
+            'notify_citizen' => ['nullable', 'boolean'],
+        ]);
+
+        $conv = Conversation::where('conversation_id', is_numeric($id) ? (int) $id : null)
+            ->orWhere('external_conversation_id', (string) $id)
+            ->firstOrFail();
+
+        $operator = $request->user();
+        $targetMode = strtoupper($validated['mode']);
+        $isOperatorMode = in_array($targetMode, ['OPERATOR', 'HUMAN']);
+
+        if ($isOperatorMode) {
+            // 1. Takeover to Human Operator
+            $conv->needs_human = true;
+            $conv->status = ConversationStatus::ASSIGNED;
+            $conv->assigned_operator_id = $operator->operator_id;
+            $conv->save();
+
+            HitlEvent::create([
+                'conversation_id' => $conv->conversation_id,
+                'operator_id' => $operator->operator_id,
+                'event_type' => HitlEventType::TAKE_OVER,
+                'notes' => $validated['notes'] ?? ('Operator '.$operator->name.' mengaktifkan mode intervensi manusia (AI dijeda).'),
+                'created_at' => now(),
+            ]);
+
+            ActivityLog::create([
+                'operator_id' => $operator->operator_id,
+                'actor_name' => $operator->name,
+                'action' => 'HITL_TAKEOVER',
+                'target' => '#'.($conv->external_conversation_id ?? ('CV-'.$conv->conversation_id)),
+                'description' => 'Operator mengambil alih percakapan (Mode Operator Aktif)',
+                'channel' => $conv->channel ?? ChannelType::WEB,
+                'created_at' => now(),
+            ]);
+
+            // Notify citizen on WhatsApp if enabled
+            if ($conv->channel === ChannelType::WHATSAPP && ! empty($conv->external_conversation_id) && $request->boolean('notify_citizen', true)) {
+                $notice = "Halo Bapak/Ibu, percakapan ini sekarang ditangani langsung oleh *Petugas Pelayanan Pekon Margodadi* ({$operator->name}). Silakan sampaikan pesan atau konsultasi Anda.";
+                $this->wahaService->sendText($conv->external_conversation_id, $notice);
+
+                Message::create([
+                    'conversation_id' => $conv->conversation_id,
+                    'sender_type' => SenderType::OPERATOR,
+                    'operator_id' => $operator->operator_id,
+                    'content' => $notice,
+                ]);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Mode intervensi operator diaktifkan. Bot AI telah dijeda.',
+                'data' => [
+                    'conversation_id' => $conv->conversation_id,
+                    'needs_human' => true,
+                    'status' => $conv->status?->value,
+                    'active_mode' => 'OPERATOR',
+                    'assigned_operator' => [
+                        'id' => 'OP-'.str_pad($operator->operator_id, 2, '0', STR_PAD_LEFT),
+                        'operator_id' => $operator->operator_id,
+                        'name' => $operator->name,
+                    ],
+                ],
+            ]);
+        }
+
+        // 2. Resume Bot AI
+        $conv->needs_human = false;
+        $conv->status = ConversationStatus::OPEN;
+        $conv->save();
+
+        HitlEvent::create([
+            'conversation_id' => $conv->conversation_id,
+            'operator_id' => $operator->operator_id,
+            'event_type' => HitlEventType::STATUS_CHANGE,
+            'notes' => $validated['notes'] ?? ('Operator '.$operator->name.' mengembalikan kendali ke Asisten Virtual AI.'),
+            'created_at' => now(),
+        ]);
+
+        ActivityLog::create([
+            'operator_id' => $operator->operator_id,
+            'actor_name' => $operator->name,
+            'action' => 'HITL_RESUME_AI',
+            'target' => '#'.($conv->external_conversation_id ?? ('CV-'.$conv->conversation_id)),
+            'description' => 'Operator mengembalikan kendali percakapan ke Bot AI',
+            'channel' => $conv->channel ?? ChannelType::WEB,
+            'created_at' => now(),
+        ]);
+
+        // Notify citizen on WhatsApp if enabled
+        if ($conv->channel === ChannelType::WHATSAPP && ! empty($conv->external_conversation_id) && $request->boolean('notify_citizen', true)) {
+            $notice = "Layanan *Asisten Virtual AI Pekon Margodadi* telah aktif kembali untuk nomor Anda. Anda dapat menanyakan kembali informasi pelayanan publik dan potensi desa.";
+            $this->wahaService->sendText($conv->external_conversation_id, $notice);
+
+            Message::create([
+                'conversation_id' => $conv->conversation_id,
+                'sender_type' => SenderType::BOT,
+                'content' => $notice,
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Kendali percakapan berhasil dikembalikan ke Bot AI.',
+            'data' => [
+                'conversation_id' => $conv->conversation_id,
+                'needs_human' => false,
+                'status' => $conv->status?->value,
+                'active_mode' => 'AI',
             ],
         ]);
     }

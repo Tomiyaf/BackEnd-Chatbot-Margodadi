@@ -15,11 +15,11 @@ use App\Http\Controllers\Api\UmkmController as DirectUmkmController;
 use App\Http\Controllers\Api\Public\ChatbotController;
 use App\Http\Controllers\Api\Public\PublicServiceController;
 use App\Http\Controllers\Api\Public\UmkmController;
-use App\Http\Controllers\Api\Webhook\WahaWebhookController;
+use App\Http\Controllers\Api\Public\WahaWebhookController;
 use Illuminate\Support\Facades\Route;
 
-// WAHA (WhatsApp HTTP API) Webhook
-Route::post('/webhook/waha', [WahaWebhookController::class, 'handle']);
+// WhatsApp WAHA Webhook (Incoming Messages)
+Route::post('/webhook/waha', [WahaWebhookController::class, 'handleWebhook']);
 
 // Global Search (Homepage Search Bar)
 Route::get('/search', [GlobalSearchController::class, 'search']);
@@ -80,6 +80,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::get('/conversations/{id}', [ConversationController::class, 'show']);
     Route::post('/conversations/{id}/reply', [ConversationController::class, 'reply']);
     Route::patch('/conversations/{id}/status', [ConversationController::class, 'updateStatus']);
+    Route::patch('/conversations/{id}/mode', [ConversationController::class, 'toggleInterventionMode']);
     Route::post('/conversations/{id}/assign', [ConversationController::class, 'assign']);
 
     // Operator Management

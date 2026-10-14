@@ -33,9 +33,9 @@ return [
     ],
 
     'waha' => [
-        'base_url' => env('WAHA_BASE_URL', 'http://127.0.0.1:3000'),
+        'base_url' => rtrim((string) env('WAHA_BASE_URL', 'http://127.0.0.1:3001'), '/'),
         'session' => env('WAHA_SESSION', 'default'),
-        'api_key' => env('WAHA_API_KEY'),
+        'api_key' => env('WAHA_API_KEY', null),
     ],
 
     'slack' => [
