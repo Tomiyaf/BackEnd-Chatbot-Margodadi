@@ -1,11 +1,28 @@
+import json
 from collections.abc import Sequence
 from typing import Any
 
-from pgvector.psycopg import register_vector
 from psycopg.types.json import Jsonb
 
 from src.chunker import TextChunk
 from src.db import get_connection
+
+try:
+    from pgvector.psycopg import register_vector
+    HAS_PGVECTOR_LIB = True
+except ImportError:
+    HAS_PGVECTOR_LIB = False
+
+
+def _has_vector_type(conn) -> bool:
+    if not HAS_PGVECTOR_LIB:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM pg_type WHERE typname = 'vector'")
+            return bool(cur.fetchone())
+    except Exception:
+        return False
 
 
 def reset_document(file_name: str, source_path: str) -> None:
@@ -83,7 +100,13 @@ def insert_chunks_for_document(
         raise ValueError("Jumlah chunks dan embeddings tidak sama.")
 
     with get_connection() as conn:
-        register_vector(conn)
+        has_vector = _has_vector_type(conn)
+        if has_vector:
+            register_vector(conn)
+            formatted_embeddings = list(embeddings)
+        else:
+            formatted_embeddings = [json.dumps(emb) for emb in embeddings]
+
         with conn.cursor() as cur:
             rows = [
                 (
@@ -91,9 +114,9 @@ def insert_chunks_for_document(
                     chunk_index,
                     chunk.content,
                     Jsonb(chunk.metadata),
-                    embedding,
+                    emb,
                 )
-                for chunk_index, (chunk, embedding) in enumerate(zip(chunks, embeddings))
+                for chunk_index, (chunk, emb) in enumerate(zip(chunks, formatted_embeddings))
             ]
 
             cur.execute("DELETE FROM document_chunks WHERE document_id = %s", (document_id,))

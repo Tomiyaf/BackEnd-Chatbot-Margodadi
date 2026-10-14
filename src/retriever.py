@@ -1,12 +1,28 @@
 from dataclasses import dataclass
+import json
 import re
 from typing import Any
 
-from pgvector.psycopg import register_vector
-
 from src.config import RAG_TOP_K
 from src.db import get_connection
-from src.embedder import Embedder
+from src.embedder import Embedder, cosine_similarity
+
+try:
+    from pgvector.psycopg import register_vector
+    HAS_PGVECTOR_LIB = True
+except ImportError:
+    HAS_PGVECTOR_LIB = False
+
+
+def _has_vector_type(conn) -> bool:
+    if not HAS_PGVECTOR_LIB:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM pg_type WHERE typname = 'vector'")
+            return bool(cur.fetchone())
+    except Exception:
+        return False
 
 
 @dataclass(frozen=True)
@@ -66,31 +82,13 @@ class Retriever:
         candidate_limit = max(top_k * 5, 30)
 
         with get_connection() as conn:
-            register_vector(conn)
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT
-                        c.id,
-                        c.content,
-                        d.file_name,
-                        d.file_type,
-                        c.metadata,
-                        c.embedding <=> %s::vector AS distance
-                    FROM document_chunks c
-                    JOIN documents d ON d.id = c.document_id
-                    ORDER BY c.embedding <=> %s::vector
-                    LIMIT %s
-                    """,
-                    (query_embedding, query_embedding, candidate_limit),
-                )
-                rows = list(cur.fetchall())
+            has_vector = _has_vector_type(conn)
 
-                if terms:
-                    conditions = " OR ".join(["c.content ILIKE %s"] * len(terms))
-                    params = [f"%{term}%" for term in terms]
+            if has_vector:
+                register_vector(conn)
+                with conn.cursor() as cur:
                     cur.execute(
-                        f"""
+                        """
                         SELECT
                             c.id,
                             c.content,
@@ -100,13 +98,70 @@ class Retriever:
                             c.embedding <=> %s::vector AS distance
                         FROM document_chunks c
                         JOIN documents d ON d.id = c.document_id
-                        WHERE {conditions}
                         ORDER BY c.embedding <=> %s::vector
                         LIMIT %s
                         """,
-                        (query_embedding, *params, query_embedding, candidate_limit),
+                        (query_embedding, query_embedding, candidate_limit),
                     )
-                    rows.extend(cur.fetchall())
+                    rows = list(cur.fetchall())
+
+                    if terms:
+                        conditions = " OR ".join(["c.content ILIKE %s"] * len(terms))
+                        params = [f"%{term}%" for term in terms]
+                        cur.execute(
+                            f"""
+                            SELECT
+                                c.id,
+                                c.content,
+                                d.file_name,
+                                d.file_type,
+                                c.metadata,
+                                c.embedding <=> %s::vector AS distance
+                            FROM document_chunks c
+                            JOIN documents d ON d.id = c.document_id
+                            WHERE {conditions}
+                            ORDER BY c.embedding <=> %s::vector
+                            LIMIT %s
+                            """,
+                            (query_embedding, *params, query_embedding, candidate_limit),
+                        )
+                        rows.extend(cur.fetchall())
+            else:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT
+                            c.id,
+                            c.content,
+                            d.file_name,
+                            d.file_type,
+                            c.metadata,
+                            c.embedding
+                        FROM document_chunks c
+                        JOIN documents d ON d.id = c.document_id
+                        """
+                    )
+                    raw_rows = cur.fetchall()
+
+                rows = []
+                for r in raw_rows:
+                    cid, content, fname, ftype, meta, emb_raw = r
+                    if isinstance(emb_raw, str):
+                        try:
+                            emb = json.loads(emb_raw)
+                        except Exception:
+                            emb = []
+                    elif isinstance(emb_raw, (list, tuple)):
+                        emb = list(emb_raw)
+                    else:
+                        emb = []
+
+                    if emb:
+                        sim = cosine_similarity(query_embedding, emb)
+                        dist = max(0.0, 1.0 - sim)
+                    else:
+                        dist = 1.0
+                    rows.append((cid, content, fname, ftype, meta, dist))
 
         unique_rows = {}
         for row in rows:
