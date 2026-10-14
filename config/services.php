@@ -32,6 +32,12 @@ return [
         'base_url' => env('RAG_SERVICE_URL', 'http://127.0.0.1:8001'),
     ],
 
+    'waha' => [
+        'base_url' => rtrim((string) env('WAHA_BASE_URL', 'http://127.0.0.1:3001'), '/'),
+        'session' => env('WAHA_SESSION', 'default'),
+        'api_key' => env('WAHA_API_KEY', null),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
