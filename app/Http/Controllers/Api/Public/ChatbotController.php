@@ -51,8 +51,14 @@ class ChatbotController extends Controller
                 'needs_human' => false,
                 'priority' => PriorityLevel::MEDIUM,
                 'citizen_name' => 'Warga Margodadi',
+                'started_at' => now(),
+                'last_message_at' => now(),
             ]
         );
+
+        if (! $conversation->wasRecentlyCreated) {
+            $conversation->touch();
+        }
 
         if ($conversation->wasRecentlyCreated) {
             ActivityLog::create([
@@ -170,6 +176,10 @@ class ChatbotController extends Controller
             'conversation_id' => $conversation->conversation_id,
             'sender_type' => SenderType::USER,
             'content' => $text,
+        ]);
+
+        $conversation->update([
+            'last_message_at' => now(),
         ]);
 
         $q = strtolower($text);

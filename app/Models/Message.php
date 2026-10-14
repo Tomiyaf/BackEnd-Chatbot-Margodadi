@@ -14,6 +14,8 @@ class Message extends Model
 
     public const UPDATED_AT = null;
 
+    protected $touches = ['conversation'];
+
     protected $table = 'messages';
     protected $primaryKey = 'message_id';
 

@@ -51,7 +51,14 @@ class ConversationController extends Controller
 
         // Filter: Channel
         if ($channel = $request->query('channel')) {
-            $query->where('channel', strtoupper($channel));
+            $ch = strtoupper(trim($channel));
+            if ($ch === 'WEBSITE' || $ch === 'WEB') {
+                $query->where('channel', ChannelType::WEB->value);
+            } elseif ($ch === 'WHATSAPP' || $ch === 'WA') {
+                $query->where('channel', ChannelType::WHATSAPP->value);
+            } elseif ($ch !== 'ALL') {
+                $query->where('channel', $ch);
+            }
         }
 
         // Filter: Priority
@@ -84,9 +91,8 @@ class ConversationController extends Controller
             });
         }
 
-        // Sorting
-        $query->orderBy('needs_human', 'desc')
-            ->orderBy('updated_at', 'desc');
+        // Sorting: Selalu tampilkan percakapan dengan interaksi atau pesan terbaru di posisi paling atas
+        $query->orderByRaw('COALESCE(last_message_at, updated_at, created_at) DESC');
 
         $perPage = (int) $request->query('per_page', 15);
         $conversations = $query->paginate($perPage);
