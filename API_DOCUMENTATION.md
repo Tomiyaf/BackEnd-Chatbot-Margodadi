@@ -22,6 +22,7 @@ Content-Type: application/json
 3. [Layanan Publik & Administrasi Pekon](#3-layanan-publik--administrasi-pekon)
 4. [Potensi UMKM Pekon Margodadi](#4-potensi-umkm-pekon-margodadi)
 5. [Autentikasi Operator & Aparatur Pekon](#5-autentikasi-operator--aparatur-pekon)
+6. [Integrasi WhatsApp (WAHA) & Human-in-the-Loop (HITL)](#6-integrasi-whatsapp-waha--human-in-the-loop-hitl)
 
 ---
 
@@ -585,6 +586,206 @@ Modul autentikasi token menggunakan **Laravel Sanctum** untuk akun aparatur peko
   "message": "Successfully logged out"
 }
 ```
+
+---
+
+## 6. Integrasi WhatsApp (WAHA) & Human-in-the-Loop (HITL)
+
+Modul integrasi WhatsApp menggunakan **WAHA (WhatsApp HTTP API)** yang terpasang di `D:\laragon\www\waha` (port 3001) dan sistem kontrol intervensi manusia (HITL).
+
+---
+
+### 6.1. Webhook Penerima Pesan WhatsApp (WAHA)
+`POST /api/webhook/waha`
+
+Menerima notifikasi pesan masuk dari WAHA. Jika dalam mode AI, sistem otomatis menjawab menggunakan RAG AI. Jika pesan meminta operator atau dalam mode Operator, AI dijeda dan dialihkan ke antrian manusia.
+
+- **Autentikasi:** Tidak Perlu (Publik untuk Webhook WAHA)
+- **Header:** `Content-Type: application/json`
+- **Contoh Payload dari WAHA:**
+```json
+{
+  "event": "message",
+  "session": "default",
+  "payload": {
+    "id": "false_628123456789@c.us_3EB0C34B...",
+    "timestamp": 1728984920,
+    "from": "628123456789@c.us",
+    "fromMe": false,
+    "body": "Apa syarat permohonan Surat Keterangan Usaha (SKU)?",
+    "_data": {
+      "notifyName": "Budi Santoso"
+    }
+  }
+}
+```
+- **Response Success (200 OK):**
+```json
+{
+  "status": "success",
+  "mode": "AI",
+  "answer": "Berdasarkan SOP Layanan Pekon Margodadi, permohonan SKU membutuhkan KTP, KK, dan Surat Pengantar RT..."
+}
+```
+
+---
+
+### 6.2. Mengubah Mode Intervensi Percakapan (Toggle Operator vs AI)
+`PATCH /api/admin/conversations/{id}/mode`
+
+Endpoint khusus dashboard operator/admin untuk mengambil alih percakapan (Mode Operator) atau mengembalikannya agar dijawab oleh AI kembali (Mode AI).
+
+- **Autentikasi:** Wajib Operator (`Authorization: Bearer <access_token>`)
+- **URL Parameters:**
+  - `id`: ID percakapan (`conversation_id` atau `external_conversation_id`)
+- **Request Body:**
+```json
+{
+  "mode": "OPERATOR",
+  "notes": "Mengambil alih percakapan untuk konsultasi khusus",
+  "notify_citizen": true
+}
+```
+*Catatan Parameter:*
+- `mode`: `"OPERATOR"` (Intervensi Manusia / AI dijeda) atau `"AI"` (Mengembalikan kendali ke AI).
+- `notes`: *(opsional)* Catatan alasan perubahan mode untuk riwayat audit.
+- `notify_citizen`: *(opsional, default: true)* Jika `true` dan tiket berasal dari WhatsApp, sistem otomatis mengirimkan pesan konfirmasi ke nomor WA warga.
+
+- **Response Success (200 OK) - Mode Operator Aktif:**
+```json
+{
+  "status": "success",
+  "message": "Mode intervensi operator diaktifkan. Bot AI telah dijeda.",
+  "data": {
+    "conversation_id": 12,
+    "needs_human": true,
+    "status": "ASSIGNED",
+    "active_mode": "OPERATOR",
+    "assigned_operator": {
+      "id": "OP-01",
+      "operator_id": 1,
+      "name": "Dewi Lestari"
+    }
+  }
+}
+```
+
+- **Response Success (200 OK) - Mode AI Aktif Kembali:**
+```json
+{
+  "status": "success",
+  "message": "Kendali percakapan berhasil dikembalikan ke Bot AI.",
+  "data": {
+    "conversation_id": 12,
+    "needs_human": false,
+    "status": "OPEN",
+    "active_mode": "AI"
+  }
+}
+```
+
+---
+
+### 6.3. Membalas Percakapan dari Dashboard (Terkirim Otomatis ke WhatsApp)
+`POST /api/admin/conversations/{id}/reply`
+
+Saat operator membalas percakapan melalui endpoint ini, jika tiket bersumber dari WhatsApp (`channel: "whatsapp"`), balasan operator otomatis dikirimkan langsung ke nomor WhatsApp warga melalui WAHA.
+
+- **Autentikasi:** Wajib Operator (`Authorization: Bearer <access_token>`)
+- **Request Body:**
+```json
+{
+  "content": "Selamat siang Pak Budi, berkas pengantar RT bisa dibawa langsung ke loket besok pagi ya.",
+  "close_conversation": false
+}
+```
+- **Response Success (200 OK):**
+```json
+{
+  "status": "success",
+  "message": "Pesan balasan berhasil dikirim.",
+  "data": {
+    "message": {
+      "id": "m45",
+      "message_id": 45,
+      "sender": "OPERATOR",
+      "sender_name": "Dewi Lestari (Operator)",
+      "content": "Selamat siang Pak Budi...",
+      "timestamp": "14:50",
+      "date": "14 Oct 2026",
+      "created_at": "2026-10-14T14:50:00+07:00"
+    },
+    "conversation_status": "ASSIGNED",
+    "needs_human": true
+  }
+}
+```
+
+---
+
+### 6.4. Panduan Implementasi Frontend Dashboard Admin (UI/UX Guide)
+
+Bagi pengembang Frontend (Vue / React / Next.js / Tailwind):
+
+#### 1. Indikator Channel & Filter List
+Pada daftar percakapan (`GET /api/admin/conversations`):
+- Periksa properti `channel`:
+  - Jika `channel === "whatsapp"`, tampilkan badge ikon WhatsApp warna hijau.
+  - Jika `channel === "web"`, tampilkan badge ikon Web warna biru.
+- Filter tab:
+  - Tab "Semua Chat": `?channel=ALL`
+  - Tab "WhatsApp": `?channel=WHATSAPP`
+  - Tab "Butuh Tindakan (HITL)": `?needs_human=true`
+
+#### 2. Indikator Mode Intervensi pada Halaman Chat
+Pada detail percakapan (`GET /api/admin/conversations/{id}`):
+- Periksa properti `needs_human`:
+  - **`needs_human === true`:** Tampilkan status badge **"Mode Operator (AI Dijeda)"** (warna oranye/kuning).
+  - **`needs_human === false`:** Tampilkan status badge **"Mode AI Aktif"** (warna hijau/biru).
+
+#### 3. Tombol Toggle Intervensi (Action Button di Header Chat)
+Sediakan tombol aksi di bagian atas panel chat:
+```javascript
+// Contoh fungsi frontend untuk ganti mode:
+async function toggleInterventionMode(conversationId, currentNeedsHuman) {
+  const targetMode = currentNeedsHuman ? 'AI' : 'OPERATOR';
+  
+  const response = await fetch(`/api/admin/conversations/${conversationId}/mode`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      mode: targetMode,
+      notify_citizen: true
+    })
+  });
+  
+  const result = await response.json();
+  if (result.status === 'success') {
+    // Perbarui state UI: needs_human = result.data.needs_human
+  }
+}
+```
+
+---
+
+### 6.5. Panduan Menjalankan Layanan WAHA di Laragon
+
+Untuk mengaktifkan gateway WhatsApp di server lokal:
+1. Buka PowerShell / Terminal di folder WAHA:
+   ```powershell
+   cd D:\laragon\www\waha
+   node dist/main
+   ```
+   *(Atau gunakan perintah: `yarn start:prod`)*
+2. Buka dashboard WAHA di browser:
+   ```text
+   http://localhost:3001/dashboard
+   ```
+3. Hubungkan nomor WhatsApp dengan menekan tombol **Start / Scan QR Code** pada dashboard WAHA.
+4. Setelah berstatus `WORKING`, pesan WhatsApp masuk akan otomatis diproses oleh webhook Laravel dan dijawab oleh AI atau operator.
 
 ---
 
