@@ -30,6 +30,9 @@ return [
 
     'rag' => [
         'base_url' => env('RAG_SERVICE_URL', 'http://127.0.0.1:8001'),
+        'chat_timeout' => (int) env('RAG_CHAT_TIMEOUT', 240),
+        'search_timeout' => (int) env('RAG_SEARCH_TIMEOUT', 60),
+        'index_timeout' => (int) env('RAG_INDEX_TIMEOUT', 300),
     ],
 
     'slack' => [
