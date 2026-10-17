@@ -34,15 +34,20 @@ class UmkmController extends Controller
         }
 
         if ($category && $category !== 'all') {
-            $categoryLower = '%'.strtolower($category).'%';
-            $query->where(function ($q) use ($categoryLower) {
-                $q->whereRaw('LOWER(description) LIKE ?', [$categoryLower])
-                    ->orWhereRaw('LOWER(sub_title) LIKE ?', [$categoryLower])
-                    ->orWhereRaw('LOWER(name) LIKE ?', [$categoryLower])
-                    ->orWhereHas('category', function ($cq) use ($categoryLower) {
-                        $cq->whereRaw('LOWER(name) LIKE ?', [$categoryLower]);
-                    });
-            });
+            if (is_numeric($category)) {
+                $query->where('category_id', (int) $category);
+            } else {
+                $categoryLower = '%'.strtolower($category).'%';
+                $query->where(function ($q) use ($categoryLower, $category) {
+                    $q->whereRaw('LOWER(description) LIKE ?', [$categoryLower])
+                        ->orWhereRaw('LOWER(sub_title) LIKE ?', [$categoryLower])
+                        ->orWhereRaw('LOWER(name) LIKE ?', [$categoryLower])
+                        ->orWhereHas('category', function ($cq) use ($categoryLower, $category) {
+                            $cq->where('slug', $category)
+                                ->orWhereRaw('LOWER(name) LIKE ?', [$categoryLower]);
+                        });
+                });
+            }
         }
 
         if ($sortBy === 'az') {
@@ -59,7 +64,7 @@ class UmkmController extends Controller
                 'name' => $u->name,
                 'subTitle' => $u->sub_title,
                 'regNumber' => $u->reg_number,
-                'category' => ['kuliner', 'kerajinan', 'pertanian', 'jasa'],
+                'category' => [$u->category?->slug ?? 'umkm'],
                 'categoryBadge' => $u->category?->name ?: 'UMKM Desa',
                 'owner' => $u->owner_name,
                 'phone' => $u->phone,
@@ -69,7 +74,7 @@ class UmkmController extends Controller
                 'image' => $u->banner_image_url,
                 'featuredProducts' => $u->products->map(fn ($p) => [
                     'name' => $p->name,
-                    'price' => 'Rp '.number_format($p->price, 0, ',', '.'),
+                    'price' => is_numeric($p->price) ? 'Rp '.number_format((float) $p->price, 0, ',', '.') : ($p->price ?: 'Hubungi Penjual'),
                     'description' => $p->description,
                 ]),
                 'history' => $u->history,
@@ -87,13 +92,26 @@ class UmkmController extends Controller
             ];
         });
 
+        // Dynamic categories from database
+        $dbCategories = \App\Models\ServiceCategory::query()
+            ->where('domain', \App\Enums\ServiceDomain::UMKM)
+            ->where('is_active', true)
+            ->withCount(['umkms' => fn ($q) => $q->where('is_active', true)])
+            ->orderBy('name', 'asc')
+            ->get();
+
         $categories = [
             ['id' => 'all', 'name' => 'Semua Kategori', 'count' => Umkm::where('is_active', true)->count()],
-            ['id' => 'kuliner', 'name' => 'Kuliner & Olahan', 'count' => Umkm::where('is_active', true)->where(fn ($q) => $q->whereRaw("LOWER(name) LIKE '%kopi%' OR LOWER(name) LIKE '%keripik%' OR LOWER(name) LIKE '%madu%'"))->count()],
-            ['id' => 'kerajinan', 'name' => 'Kerajinan & Kriya', 'count' => Umkm::where('is_active', true)->where(fn ($q) => $q->whereRaw("LOWER(name) LIKE '%bambu%' OR LOWER(name) LIKE '%batik%'"))->count()],
-            ['id' => 'pertanian', 'name' => 'Pertanian & Agribisnis', 'count' => Umkm::where('is_active', true)->where(fn ($q) => $q->whereRaw("LOWER(name) LIKE '%bibit%' OR LOWER(name) LIKE '%madu%' OR LOWER(name) LIKE '%kopi%'"))->count()],
-            ['id' => 'jasa', 'name' => 'Jasa & Perdagangan', 'count' => Umkm::where('is_active', true)->where(fn ($q) => $q->whereRaw("LOWER(name) LIKE '%bengkel%'"))->count()],
         ];
+
+        foreach ($dbCategories as $cat) {
+            $categories[] = [
+                'id' => (string) $cat->category_id,
+                'slug' => $cat->slug,
+                'name' => $cat->name,
+                'count' => $cat->umkms_count,
+            ];
+        }
 
         return response()->json([
             'status' => 'success',

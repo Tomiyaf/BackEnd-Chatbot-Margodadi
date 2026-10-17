@@ -39,6 +39,9 @@ class Umkm extends Model
         'map_url',
         'last_verified_at',
         'is_active',
+        'kb_document_id',
+        'rag_document_id',
+        'ai_synced_at',
     ];
 
     protected function casts(): array
@@ -47,12 +50,18 @@ class Umkm extends Model
             'gallery_urls' => 'array',
             'last_verified_at' => 'datetime',
             'is_active' => 'boolean',
+            'ai_synced_at' => 'datetime',
         ];
     }
 
     public function category(): BelongsTo
     {
         return $this->belongsTo(ServiceCategory::class, 'category_id', 'category_id');
+    }
+
+    public function kbDocument(): BelongsTo
+    {
+        return $this->belongsTo(KbDocument::class, 'kb_document_id', 'document_id');
     }
 
     public function products(): HasMany

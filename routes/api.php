@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Admin\EducationController;
 use App\Http\Controllers\Api\Admin\KnowledgeBaseController;
 use App\Http\Controllers\Api\Admin\OperatorController;
 use App\Http\Controllers\Api\Admin\SettingController;
+use App\Http\Controllers\Api\Admin\UmkmController as AdminUmkmController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\GlobalSearchController;
 use App\Http\Controllers\Api\PublicServiceController as DirectPublicServiceController;
@@ -111,6 +112,22 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
 
     // Education Data Export
     Route::get('/education/export-csv', [EducationController::class, 'exportCsv']);
+
+    // UMKM & Potensi Desa Back-Office Management (Admin & Operator Access)
+    Route::prefix('umkms')->group(function () {
+        Route::get('/stats', [AdminUmkmController::class, 'stats']);
+        Route::get('/categories', [AdminUmkmController::class, 'categories']);
+        Route::post('/sync-all-to-rag', [AdminUmkmController::class, 'syncAllToRag']);
+        Route::get('/', [AdminUmkmController::class, 'index']);
+        Route::post('/', [AdminUmkmController::class, 'store']);
+        Route::get('/{id}', [AdminUmkmController::class, 'show']);
+        Route::post('/{id}', [AdminUmkmController::class, 'update']);
+        Route::put('/{id}', [AdminUmkmController::class, 'update']);
+        Route::delete('/{id}', [AdminUmkmController::class, 'destroy']);
+        Route::patch('/{id}/status', [AdminUmkmController::class, 'updateStatus']);
+        Route::patch('/{id}/verify', [AdminUmkmController::class, 'verify']);
+        Route::post('/{id}/sync-ai', [AdminUmkmController::class, 'syncToRag']);
+    });
 
     // Activity Logs
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);
