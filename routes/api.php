@@ -45,9 +45,10 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 
     // Protected Auth Routes
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'operator.activity'])->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
+        Route::post('/heartbeat', [AuthController::class, 'heartbeat']);
     });
 });
 
@@ -72,7 +73,7 @@ Route::prefix('public')->group(function () {
 });
 
 // Protected Admin & Operator Routes
-Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'operator.activity'])->prefix('admin')->group(function () {
     // Executive Dashboard
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
 

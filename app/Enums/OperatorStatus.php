@@ -6,4 +6,5 @@ enum OperatorStatus: string
 {
     case ONLINE = 'ONLINE';
     case OFFLINE = 'OFFLINE';
+    case BUSY = 'BUSY';
 }

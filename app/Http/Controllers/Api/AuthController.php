@@ -99,6 +99,10 @@ class AuthController extends Controller
             ], 403);
         }
 
+        $operator->status = OperatorStatus::ONLINE;
+        $operator->last_activity_at = now();
+        $operator->save();
+
         $token = $operator->createToken('operator_auth_token')->plainTextToken;
 
         ActivityLog::create([
@@ -127,10 +131,46 @@ class AuthController extends Controller
      */
     public function me(Request $request): JsonResponse
     {
+        $user = $request->user();
+        if ($user instanceof Operator) {
+            $user->forceFill([
+                'last_activity_at' => now(),
+                'status' => $user->status === OperatorStatus::BUSY ? OperatorStatus::BUSY : OperatorStatus::ONLINE,
+            ])->saveQuietly();
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => [
-                'operator' => $request->user(),
+                'operator' => $user,
+            ],
+        ]);
+    }
+
+    /**
+     * Heartbeat to keep operator status ONLINE and refresh last_activity_at.
+     */
+    public function heartbeat(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if ($user instanceof Operator) {
+            $currentStatus = $user->status;
+            $newStatus = ($currentStatus === OperatorStatus::BUSY) 
+                ? OperatorStatus::BUSY 
+                : OperatorStatus::ONLINE;
+
+            $user->forceFill([
+                'last_activity_at' => now(),
+                'status' => $newStatus,
+            ])->saveQuietly();
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'operator_id' => $user?->operator_id,
+                'status' => $user?->status?->value ?? 'ONLINE',
+                'last_activity_at' => $user?->last_activity_at?->toIso8601String(),
             ],
         ]);
     }
@@ -142,6 +182,9 @@ class AuthController extends Controller
     {
         $user = $request->user();
         if ($user) {
+            $user->status = OperatorStatus::OFFLINE;
+            $user->save();
+
             ActivityLog::create([
                 'operator_id' => $user->operator_id,
                 'actor_name' => $user->name,

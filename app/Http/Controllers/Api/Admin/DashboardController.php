@@ -85,8 +85,12 @@ class DashboardController extends Controller
         }
 
         // Operators
+        $timeoutThreshold = now()->subMinutes(5);
         $totalOperators = Operator::where('is_active', true)->count();
-        $onlineOperators = Operator::where('is_active', true)->where('status', 'ONLINE')->count();
+        $onlineOperators = Operator::where('is_active', true)
+            ->whereIn('status', ['ONLINE', 'BUSY'])
+            ->where('last_activity_at', '>=', $timeoutThreshold)
+            ->count();
 
         // Dynamic Average Response Time calculation from messages
         $opMessages = Message::where('sender_type', SenderType::OPERATOR)

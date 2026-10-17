@@ -26,6 +26,7 @@ class Operator extends Authenticatable
         'role',
         'status',
         'is_active',
+        'last_activity_at',
     ];
 
     protected $hidden = [
@@ -40,6 +41,7 @@ class Operator extends Authenticatable
             'role' => OperatorRole::class,
             'status' => OperatorStatus::class,
             'is_active' => 'boolean',
+            'last_activity_at' => 'datetime',
         ];
     }
 

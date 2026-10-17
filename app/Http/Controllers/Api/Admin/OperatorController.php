@@ -17,6 +17,19 @@ class OperatorController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $timeoutThreshold = now()->subMinutes(5);
+
+        // 1. Sinkronisasi timeout: jika operator ONLINE/BUSY tapi tidak ada aktivitas dalam 5 menit terakhir, ubah ke OFFLINE
+        Operator::where('is_active', true)
+            ->whereIn('status', [OperatorStatus::ONLINE, OperatorStatus::BUSY])
+            ->where(function ($q) use ($timeoutThreshold) {
+                $q->whereNull('last_activity_at')
+                    ->orWhere('last_activity_at', '<', $timeoutThreshold);
+            })
+            ->update([
+                'status' => OperatorStatus::OFFLINE,
+            ]);
+
         $operators = Operator::where('is_active', true)
             ->withCount([
                 'assignedConversations as assigned_count' => function ($q) {
@@ -29,12 +42,16 @@ class OperatorController extends Controller
             ->orderBy('operator_id')
             ->get();
 
-        $formatted = $operators->map(function (Operator $op) {
+        $formatted = $operators->map(function (Operator $op) use ($timeoutThreshold) {
             $assigned = (int) ($op->assigned_count ?? 0);
             $resolved = (int) ($op->resolved_count ?? 0);
             $totalHandled = $assigned + $resolved;
 
             $avgTime = $totalHandled > 0 ? (round(1.5 + (($op->operator_id % 3) * 0.6), 1).' mnt') : '-';
+
+            $isOnline = in_array($op->status, [OperatorStatus::ONLINE, OperatorStatus::BUSY], true)
+                && $op->last_activity_at !== null
+                && $op->last_activity_at >= $timeoutThreshold;
 
             return [
                 'id' => 'OP-'.str_pad($op->operator_id, 2, '0', STR_PAD_LEFT),
@@ -42,7 +59,9 @@ class OperatorController extends Controller
                 'name' => $op->name,
                 'email' => $op->email,
                 'role' => $op->role?->value ?? 'OPERATOR',
-                'status' => $op->status?->value ?? 'OFFLINE',
+                'status' => $isOnline ? $op->status->value : 'OFFLINE',
+                'is_online' => $isOnline,
+                'last_activity_at' => $op->last_activity_at?->toIso8601String(),
                 'avatar' => $op->avatar_url ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
                 'assignedCount' => $assigned,
                 'resolvedCount' => $resolved,
@@ -73,6 +92,9 @@ class OperatorController extends Controller
 
         $oldStatus = $operator->status?->value;
         $operator->status = OperatorStatus::from($validated['status']);
+        if ($operator->status === OperatorStatus::ONLINE || $operator->status === OperatorStatus::BUSY) {
+            $operator->last_activity_at = now();
+        }
         $operator->save();
 
         ActivityLog::create([
@@ -91,6 +113,7 @@ class OperatorController extends Controller
             'data' => [
                 'operator_id' => $operator->operator_id,
                 'status' => $operator->status?->value,
+                'last_activity_at' => $operator->last_activity_at?->toIso8601String(),
             ],
         ]);
     }
