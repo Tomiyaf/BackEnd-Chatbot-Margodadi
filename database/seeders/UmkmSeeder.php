@@ -85,10 +85,10 @@ class UmkmSeeder extends Seeder
                 'production_capacity' => '400 kg/bln',
                 'capacity_note' => 'Petik Merah Optimal',
                 'group_name' => 'Gapoktan Pekon',
-                'group_location' => 'Sumberejo, Tanggamus',
+                'group_location' => 'Ambarawa, Pringsewu',
                 'map_title' => 'Rumah Produksi Kopi Pak Supardi',
                 'map_address' => 'Dusun 02 RT 04, Margodadi',
-                'map_url' => 'https://maps.google.com/?q=Margodadi+Sumberejo+Tanggamus',
+                'map_url' => 'https://maps.google.com/?q=Margodadi+Ambarawa+Pringsewu',
                 'last_verified_at' => now()->subDays(15),
                 'is_active' => true,
                 'products' => [
@@ -120,7 +120,7 @@ class UmkmSeeder extends Seeder
                 'group_location' => 'Dusun 01, Margodadi',
                 'map_title' => 'Workshop Kriya Anyaman Bambu Lestari',
                 'map_address' => 'Dusun 01 RT 02, Margodadi',
-                'map_url' => 'https://maps.google.com/?q=Margodadi+Sumberejo+Tanggamus',
+                'map_url' => 'https://maps.google.com/?q=Margodadi+Ambarawa+Pringsewu',
                 'last_verified_at' => now()->subDays(12),
                 'is_active' => true,
                 'products' => [
@@ -152,7 +152,7 @@ class UmkmSeeder extends Seeder
                 'group_location' => 'Dusun 03, Margodadi',
                 'map_title' => 'Dapur Produksi Barokah Rasa',
                 'map_address' => 'Dusun 03 RT 06, Margodadi',
-                'map_url' => 'https://maps.google.com/?q=Margodadi+Sumberejo+Tanggamus',
+                'map_url' => 'https://maps.google.com/?q=Margodadi+Ambarawa+Pringsewu',
                 'last_verified_at' => now()->subDays(8),
                 'is_active' => true,
                 'products' => [
@@ -184,7 +184,7 @@ class UmkmSeeder extends Seeder
                 'group_location' => 'Dusun 04, Margodadi',
                 'map_title' => 'Peternakan & Koloni Lebah Sari Lebah',
                 'map_address' => 'Dusun 04 RT 08, Margodadi',
-                'map_url' => 'https://maps.google.com/?q=Margodadi+Sumberejo+Tanggamus',
+                'map_url' => 'https://maps.google.com/?q=Margodadi+Ambarawa+Pringsewu',
                 'last_verified_at' => now()->subDays(6),
                 'is_active' => true,
                 'products' => [
@@ -202,7 +202,7 @@ class UmkmSeeder extends Seeder
                 'phone' => '0852-7311-6655',
                 'wa_number' => '6285273116655',
                 'address' => 'Balai Kreatif Dusun 01, Pekon Margodadi',
-                'description' => 'Kain batik tulis kontemporer dengan motif khas kekayaan bumi Sumberejo seperti biji kopi dan tangkai lada hitam berpadu ornamen tapis tradisional.',
+                'description' => 'Kain batik tulis kontemporer dengan motif khas kekayaan bumi Pekon Margodadi seperti biji kopi dan tangkai lada hitam berpadu ornamen tapis tradisional.',
                 'history' => 'Inisiatif pemberdayaan sanggar kreasi perempuan pekon Margodadi untuk mengangkat identitas agraris setempat melalui seni canting batik. Pewarnaan menggunakan ekstrak kulit pohon mahoni, daun mangga, dan serbuk limbah kopi pekon yang ramah alam.',
                 'banner_image_url' => 'https://lh3.googleusercontent.com/aida-public/AB6AXuCc4ChZXPKMb8wcwRXMZYqTwUvOqunj4WKT87DmofCm8iluO7NtLme6d4UN4pIrm0C4ut25hfreJflFdO-BsQyrZjHsMgwInwqxkTzCt4nGVJKBB3WtV4IBPyXIF17rPAIp1Y_9W1teYjlr_Gw21WObIrxF-3na-R-OAX058ITD_6SprbUQL9swoqgp3WbczTVBiJrgEWKXOak5VCcuCItLAFJEtY3WgPyhS-5helc3SBewxC6dKiA',
                 'gallery_urls' => [
@@ -216,7 +216,7 @@ class UmkmSeeder extends Seeder
                 'group_location' => 'Dusun 01, Margodadi',
                 'map_title' => 'Balai Sanggar Batik Paguyuban Putri',
                 'map_address' => 'Balai Kreatif Dusun 01, Margodadi',
-                'map_url' => 'https://maps.google.com/?q=Margodadi+Sumberejo+Tanggamus',
+                'map_url' => 'https://maps.google.com/?q=Margodadi+Ambarawa+Pringsewu',
                 'last_verified_at' => now()->subDays(4),
                 'is_active' => true,
                 'products' => [
@@ -248,7 +248,7 @@ class UmkmSeeder extends Seeder
                 'group_location' => 'Kebun Induk RT 05, Margodadi',
                 'map_title' => 'Nursery Kebun Bibit Tani Makmur',
                 'map_address' => 'Jalur Kebun Induk RT 05, Margodadi',
-                'map_url' => 'https://maps.google.com/?q=Margodadi+Sumberejo+Tanggamus',
+                'map_url' => 'https://maps.google.com/?q=Margodadi+Ambarawa+Pringsewu',
                 'last_verified_at' => now()->subDays(2),
                 'is_active' => true,
                 'products' => [
@@ -280,7 +280,7 @@ class UmkmSeeder extends Seeder
                 'group_location' => 'Dusun 02, Margodadi',
                 'map_title' => 'Bengkel Teknik Karya Mandiri',
                 'map_address' => 'Dusun 02 RT 03, Margodadi',
-                'map_url' => 'https://maps.google.com/?q=Margodadi+Sumberejo+Tanggamus',
+                'map_url' => 'https://maps.google.com/?q=Margodadi+Ambarawa+Pringsewu',
                 'last_verified_at' => now()->subDay(),
                 'is_active' => true,
                 'products' => [
