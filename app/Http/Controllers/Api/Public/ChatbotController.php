@@ -469,36 +469,109 @@ class ChatbotController extends Controller
     public function submitFeedback(Request $request): JsonResponse
     {
         $request->validate([
-            'rating' => 'required|integer|min:1|max:5',
-            'conversation_id' => 'nullable|integer',
+            'rating' => 'nullable|integer|min:1|max:5',
+            'type' => 'nullable|string|in:positive,negative',
+            'conversation_id' => 'nullable',
+            'session_id' => 'nullable|string',
+            'message_id' => 'nullable',
             'comment' => 'nullable|string',
         ]);
 
-        $userId = $request->input('user_id');
-        if (! $userId && $request->input('conversation_id')) {
-            $conv = Conversation::find($request->input('conversation_id'));
-            $userId = $conv?->user_id;
+        $type = $request->input('type');
+        $comment = $request->input('comment');
+        $rating = $request->input('rating');
+
+        if ($type === 'positive') {
+            $rating = 5;
+            $comment = $comment ?: 'Jawaban Membantu';
+        } elseif ($type === 'negative') {
+            $rating = 1;
+            $comment = $comment ?: 'Kurang Akurat';
         }
 
+        $rating = $rating ? (int) $rating : 5;
+
+        // 1. Resolve Conversation
+        $conversationId = $request->input('conversation_id');
+        $sessionId = $request->input('session_id');
+
+        $conv = null;
+        if ($conversationId) {
+            $conv = Conversation::where('conversation_id', is_numeric($conversationId) ? (int) $conversationId : null)
+                ->orWhere('external_conversation_id', (string) $conversationId)
+                ->first();
+        }
+
+        if (! $conv && $sessionId) {
+            $conv = Conversation::where('external_conversation_id', $sessionId)
+                ->orWhere('conversation_id', is_numeric($sessionId) ? (int) $sessionId : null)
+                ->first();
+        }
+
+        // 2. Resolve Message ID if provided
+        $messageId = null;
+        $rawMessageId = $request->input('message_id');
+        if ($rawMessageId) {
+            if (is_numeric($rawMessageId)) {
+                $messageId = (int) $rawMessageId;
+            } else {
+                $extracted = preg_replace('/\D/', '', (string) $rawMessageId);
+                if (! empty($extracted)) {
+                    $messageId = (int) $extracted;
+                }
+            }
+
+            if ($messageId && ! Message::where('message_id', $messageId)->exists()) {
+                $messageId = null;
+            }
+
+            if (! $conv && $messageId) {
+                $msg = Message::find($messageId);
+                if ($msg) {
+                    $conv = Conversation::find($msg->conversation_id);
+                }
+            }
+        }
+
+        // Fallback conversation if none found yet
+        if (! $conv) {
+            $conv = Conversation::latest('conversation_id')->first();
+        }
+
+        if (! $conv) {
+            $user = User::firstOrCreate(['anonymous_code' => 'WARGA-ANON']);
+            $conv = Conversation::create([
+                'user_id' => $user->user_id,
+                'channel' => ChannelType::WEB,
+                'status' => ConversationStatus::OPEN,
+                'external_conversation_id' => $sessionId ?? ('SESS-' . strtoupper(Str::random(8))),
+                'started_at' => now(),
+            ]);
+        }
+
+        // 3. Resolve User ID
+        $userId = $request->input('user_id') ?: $conv->user_id;
         if (! $userId) {
             $user = User::firstOrCreate(['anonymous_code' => 'WARGA-ANON']);
             $userId = $user->user_id;
         }
 
         $feedback = Feedback::create([
-            'conversation_id' => $request->input('conversation_id'),
+            'conversation_id' => $conv->conversation_id,
+            'message_id' => $messageId,
             'user_id' => $userId,
-            'rating' => $request->input('rating'),
-            'comment' => $request->input('comment'),
+            'rating' => $rating,
+            'comment' => $comment,
             'created_at' => now(),
         ]);
 
+        $feedbackTypeLabel = $type ? ($type === 'positive' ? 'Jawaban Membantu' : 'Kurang Akurat') : "Rating {$rating}/5 Bintang";
         ActivityLog::create([
             'operator_id' => null,
             'actor_name' => 'Warga Margodadi',
             'action' => 'FEEDBACK_SUBMITTED',
-            'target' => $request->input('conversation_id') ? '#CV-' . $request->input('conversation_id') : '#FEEDBACK',
-            'description' => 'Warga memberikan ulasan rating ' . $request->input('rating') . '/5 bintang' . ($request->input('comment') ? ': "' . $request->input('comment') . '"' : ''),
+            'target' => $messageId ? '#MSG-' . $messageId : ('#CV-' . $conv->conversation_id),
+            'description' => "Warga memberikan feedback: {$feedbackTypeLabel}" . ($comment && !in_array($comment, ['Jawaban Membantu', 'Kurang Akurat']) ? ": \"{$comment}\"" : ''),
             'channel' => ChannelType::WEB,
             'created_at' => now(),
         ]);
@@ -508,6 +581,9 @@ class ChatbotController extends Controller
             'message' => 'Terima kasih, umpan balik Anda berhasil disimpan.',
             'data' => [
                 'feedback_id' => $feedback->feedback_id,
+                'rating' => $feedback->rating,
+                'message_id' => $feedback->message_id,
+                'conversation_id' => $feedback->conversation_id,
             ],
         ]);
     }
