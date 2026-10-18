@@ -6,6 +6,7 @@ from psycopg.types.json import Jsonb
 
 from src.chunker import TextChunk
 from src.db import get_connection
+from src.document_policy import supported_domain_sql
 
 try:
     from pgvector.psycopg import register_vector
@@ -160,7 +161,7 @@ def list_documents() -> list[dict[str, Any]]:
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT
                     d.id,
                     d.file_name,
@@ -174,6 +175,8 @@ def list_documents() -> list[dict[str, Any]]:
                     COUNT(c.id) AS chunk_count
                 FROM documents d
                 LEFT JOIN document_chunks c ON c.document_id = d.id
+                    AND {supported_domain_sql('c')}
+                WHERE {supported_domain_sql('d')}
                 GROUP BY d.id
                 ORDER BY d.created_at DESC
                 """

@@ -5,6 +5,7 @@ from typing import Any
 
 from src.config import RAG_TOP_K
 from src.db import get_connection
+from src.document_policy import SEARCHABLE_DOCUMENT_SQL
 from src.embedder import Embedder, cosine_similarity
 
 try:
@@ -141,7 +142,7 @@ class Retriever:
                 register_vector(conn)
                 with conn.cursor() as cur:
                     cur.execute(
-                        """
+                        f"""
                         SELECT
                             c.id,
                             c.content,
@@ -151,6 +152,7 @@ class Retriever:
                             c.embedding <=> %s::vector AS distance
                         FROM document_chunks c
                         JOIN documents d ON d.id = c.document_id
+                        WHERE {SEARCHABLE_DOCUMENT_SQL}
                         ORDER BY c.embedding <=> %s::vector
                         LIMIT %s
                         """,
@@ -178,7 +180,7 @@ class Retriever:
                                 ({rank_expr}) AS keyword_rank
                             FROM document_chunks c
                             JOIN documents d ON d.id = c.document_id
-                            WHERE {conditions}
+                            WHERE ({SEARCHABLE_DOCUMENT_SQL}) AND ({conditions})
                             ORDER BY keyword_rank DESC, c.embedding <=> %s::vector
                             LIMIT %s
                             """,
@@ -194,7 +196,7 @@ class Retriever:
             else:
                 with conn.cursor() as cur:
                     cur.execute(
-                        """
+                        f"""
                         SELECT
                             c.id,
                             c.content,
@@ -204,6 +206,7 @@ class Retriever:
                             c.embedding
                         FROM document_chunks c
                         JOIN documents d ON d.id = c.document_id
+                        WHERE {SEARCHABLE_DOCUMENT_SQL}
                         """
                     )
                     raw_rows = cur.fetchall()

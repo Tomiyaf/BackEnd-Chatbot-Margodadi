@@ -31,6 +31,25 @@ PostgreSQL dan endpoint Ollama sesuai lingkungan lokal, kemudian jalankan
 `./start-api.ps1` untuk API Python. Pengaturan `.env`, bobot model, `.venv`,
 dan `vendor` tidak disimpan ke Git.
 
+### Data edukasi sampah yang sudah dipensiunkan
+
+Domain aktif sekarang hanya `PUBLIC_SERVICE` dan `UMKM`. Dokumen dan kategori
+`WASTE_EDUCATION` tetap tersimpan, tetapi tidak ditampilkan, diindeks ulang,
+atau digunakan sebagai sumber jawaban. PDF/Excel lokal tanpa label domain
+tetap dapat dicari. Dokumen/chunk Python yang berstatus metadata
+`is_active=false` juga tidak digunakan dalam retrieval.
+
+Sebelum menjalankan `php artisan migrate`, buat backup database dan uji pada
+salinannya. Migrasi `2026_10_18_005900` menyimpan snapshot JSON data lama dari
+tiga tabel edukasi, dokumen, chunk, dan kategori ke `retired_education_archive`,
+lalu menonaktifkan dokumen/kategori edukasi. Migrasi penghapusan tabel dari
+`main` berjalan sesudah pengarsipan ini. Arsip sengaja dipertahankan saat
+rollback; rollback tidak otomatis memulihkan modul edukasi.
+
+Jika migrasi penghapusan tabel sudah pernah dijalankan sebelum migrasi arsip
+ini tersedia, data tabel yang terhapus hanya dapat dipulihkan dari backup
+sebelumnya. Migrasi arsip tetap menyimpan dokumen/kategori yang masih tersedia.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
