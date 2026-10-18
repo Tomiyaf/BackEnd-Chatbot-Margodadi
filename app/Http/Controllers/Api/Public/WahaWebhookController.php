@@ -183,7 +183,7 @@ class WahaWebhookController extends Controller
         $this->wahaService->startTyping($chatId);
 
         try {
-            $ragResponse = $this->ragGateway->chat($text, 3);
+            $ragResponse = $this->ragGateway->chat($text, 3, 'whatsapp:'.$conversation->conversation_id);
             $aiAnswer = trim((string) ($ragResponse['answer'] ?? ''));
 
             if (empty($aiAnswer)) {

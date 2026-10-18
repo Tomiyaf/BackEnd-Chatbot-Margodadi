@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Umkm;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -15,12 +16,21 @@ class RagGatewayService
         $this->baseUrl = rtrim((string) config('services.rag.base_url'), '/');
     }
 
-    public function chat(string $question, int $topK = 3): array
+    public function chat(string $question, int $topK = 3, ?string $sessionId = null): array
     {
         return $this->postJson('/chat', [
             'question' => $question,
             'top_k' => $topK,
-        ], 120)->json();
+            'session_id' => $sessionId,
+            // The directory comes from current published records, independently of vector indexing.
+            'umkm_catalogue' => Umkm::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->orderBy('umkm_id')
+                ->get(['umkm_id', 'name'])
+                ->map(fn (Umkm $umkm) => ['id' => $umkm->umkm_id, 'name' => $umkm->name])
+                ->all(),
+        ], (int) config('services.rag.chat_timeout', 240))->json();
     }
 
     public function search(string $question, int $topK = 3): array
@@ -28,7 +38,7 @@ class RagGatewayService
         return $this->postJson('/search', [
             'question' => $question,
             'top_k' => $topK,
-        ], 60)->json();
+        ], (int) config('services.rag.search_timeout', 60))->json();
     }
 
     public function documents(): array
@@ -62,7 +72,7 @@ class RagGatewayService
 
     public function indexText(array $payload): array
     {
-        return $this->postJson('/documents/text', $payload, 120)->json();
+        return $this->postJson('/documents/text', $payload, (int) config('services.rag.index_timeout', 120))->json();
     }
 
     public function deleteDocument(int $documentId): bool

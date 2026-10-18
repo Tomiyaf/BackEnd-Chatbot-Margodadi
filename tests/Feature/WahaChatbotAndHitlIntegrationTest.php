@@ -77,7 +77,7 @@ class WahaChatbotAndHitlIntegrationTest extends TestCase
         $this->mock(RagGatewayService::class, function (MockInterface $mock) {
             $mock->shouldReceive('chat')
                 ->once()
-                ->with('Apa syarat membuat SKU?', 3)
+                ->with('Apa syarat membuat SKU?', 3, \Mockery::on(fn ($session) => str_starts_with($session, 'whatsapp:')))
                 ->andReturn([
                     'question' => 'Apa syarat membuat SKU?',
                     'answer' => 'Syarat SKU adalah KTP dan KK asli serta surat RT.',

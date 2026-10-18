@@ -31,7 +31,7 @@ class KnowledgeBaseController extends Controller
     {
         $totalDocs = KbDocument::count();
         $activeDocs = KbDocument::where('is_active', true)->count();
-        $totalChunks = KbChunk::count();
+        $totalChunks = KbChunk::whereHas('document')->count();
         try {
             $ragDocuments = $this->ragGateway->documents();
             if (!empty($ragDocuments)) {
@@ -49,7 +49,7 @@ class KnowledgeBaseController extends Controller
         $ragConfig = RagConfiguration::where('is_active', true)->latest('created_at')->first();
 
         $avgChunksPerDoc = $totalDocs > 0 ? round($totalChunks / $totalDocs, 1) : 0;
-        $lastIndexed = KbChunk::latest('created_at')->value('created_at');
+        $lastIndexed = KbChunk::whereHas('document')->latest('created_at')->value('created_at');
 
         return response()->json([
             'status' => 'success',
@@ -152,6 +152,8 @@ class KnowledgeBaseController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        set_time_limit((int) config('services.rag.index_timeout', 300) + 30);
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'domain' => ['required', 'string', 'in:PUBLIC_SERVICE,UMKM'],
@@ -560,7 +562,7 @@ class KnowledgeBaseController extends Controller
      */
     public function updateChunk(Request $request, int $chunkId): JsonResponse
     {
-        $chunk = KbChunk::with('document')->findOrFail($chunkId);
+        $chunk = KbChunk::whereHas('document')->with('document')->findOrFail($chunkId);
         $validated = $request->validate([
             'content' => ['required', 'string'],
         ]);
@@ -588,7 +590,7 @@ class KnowledgeBaseController extends Controller
      */
     public function deleteChunk(int $chunkId): JsonResponse
     {
-        $chunk = KbChunk::findOrFail($chunkId);
+        $chunk = KbChunk::whereHas('document')->findOrFail($chunkId);
         $docId = $chunk->document_id;
         $chunk->delete();
 

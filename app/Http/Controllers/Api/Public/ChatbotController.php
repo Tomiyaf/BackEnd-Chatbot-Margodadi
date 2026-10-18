@@ -144,6 +144,8 @@ class ChatbotController extends Controller
      */
     public function sendMessage(Request $request): JsonResponse
     {
+        set_time_limit((int) config('services.rag.chat_timeout', 240) + 30);
+
         $request->validate([
             'message' => 'required|string',
             'session_id' => 'nullable|string',
@@ -266,7 +268,7 @@ class ChatbotController extends Controller
         ];
 
         try {
-            $ragResponse = $this->ragGateway->chat($text, 3);
+            $ragResponse = $this->ragGateway->chat($text, 3, 'web:'.$conversation->conversation_id);
 
             $replyContent['text'] = $ragResponse['answer'] ?? 'Maaf, informasi tersebut tidak tersedia dalam data.';
             $replyContent['sources'] = $this->formatRagSources($ragResponse['sources'] ?? []);

@@ -16,6 +16,16 @@ class ServiceCategory extends Model
     protected $table = 'service_categories';
     protected $primaryKey = 'category_id';
 
+    protected static function booted(): void
+    {
+        static::addGlobalScope('supported_domain', function (Builder $query) {
+            $query->whereIn($query->getModel()->qualifyColumn('domain'), [
+                ServiceDomain::PUBLIC_SERVICE->value,
+                ServiceDomain::UMKM->value,
+            ]);
+        });
+    }
+
     protected $fillable = [
         'parent_id',
         'name',
