@@ -82,9 +82,17 @@ Route::middleware(['auth:sanctum', 'operator.activity'])->prefix('admin')->group
     Route::patch('/conversations/{id}/mode', [ConversationController::class, 'toggleInterventionMode']);
     Route::post('/conversations/{id}/assign', [ConversationController::class, 'assign']);
 
-    // Operator Management
-    Route::get('/operators', [OperatorController::class, 'index']);
-    Route::patch('/operators/{id}/status', [OperatorController::class, 'updateStatus']);
+    // Operator Management (CRUD, Verification & Status)
+    Route::prefix('operators')->group(function () {
+        Route::get('/', [OperatorController::class, 'index']);
+        Route::get('/check-availability', [OperatorController::class, 'checkAvailability']);
+        Route::post('/', [OperatorController::class, 'store']);
+        Route::get('/{id}', [OperatorController::class, 'show']);
+        Route::put('/{id}', [OperatorController::class, 'update']);
+        Route::delete('/{id}', [OperatorController::class, 'destroy']);
+        Route::patch('/{id}/status', [OperatorController::class, 'updateStatus']);
+        Route::post('/{id}/reset-password', [OperatorController::class, 'resetPassword']);
+    });
 
     // Analytics & SLA Performance
     Route::get('/analytics/overview', [AnalyticsController::class, 'overview']);
@@ -142,6 +150,7 @@ Route::middleware(['auth:sanctum', 'operator.activity'])->prefix('admin')->group
     Route::get('/settings/rag', [SettingController::class, 'getRag']);
     Route::put('/settings/rag', [SettingController::class, 'updateRag']);
     Route::put('/settings/profile', [SettingController::class, 'updateProfile']);
+    Route::post('/settings/avatar', [SettingController::class, 'updateAvatar']);
     Route::post('/settings/change-password', [SettingController::class, 'changePassword']);
 });
 

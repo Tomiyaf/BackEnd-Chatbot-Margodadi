@@ -18,6 +18,7 @@ class OperatorSeeder extends Seeder
         $operators = [
             [
                 'name' => 'Admin Margodadi',
+                'username' => 'admin',
                 'email' => 'admin@margodadi.desa.id',
                 'password' => Hash::make('123'),
                 'phone' => '0811-0000-0001',
@@ -28,6 +29,7 @@ class OperatorSeeder extends Seeder
             ],
             [
                 'name' => 'Operator Margodadi',
+                'username' => 'operator',
                 'email' => 'operator@margodadi.desa.id',
                 'password' => Hash::make('123'),
                 'phone' => '0812-0000-0002',
@@ -38,6 +40,7 @@ class OperatorSeeder extends Seeder
             ],
             [
                 'name' => 'Siti Aminah',
+                'username' => 'siti.aminah',
                 'email' => 'siti.aminah@margodadi.desa.id',
                 'password' => Hash::make('123'),
                 'phone' => '0812-3456-7890',
@@ -48,6 +51,7 @@ class OperatorSeeder extends Seeder
             ],
             [
                 'name' => 'Ahmad Fauzi',
+                'username' => 'ahmad.fauzi',
                 'email' => 'ahmad.fauzi@margodadi.desa.id',
                 'password' => Hash::make('123'),
                 'phone' => '0813-9876-5432',
@@ -58,6 +62,7 @@ class OperatorSeeder extends Seeder
             ],
             [
                 'name' => 'Budi Santoso',
+                'username' => 'budi.santoso',
                 'email' => 'budi.santoso@margodadi.desa.id',
                 'password' => Hash::make('123'),
                 'phone' => '0811-2233-4455',
@@ -68,6 +73,7 @@ class OperatorSeeder extends Seeder
             ],
             [
                 'name' => 'Nurul Hidayah',
+                'username' => 'nurul.hidayah',
                 'email' => 'nurul.hidayah@margodadi.desa.id',
                 'password' => Hash::make('123'),
                 'phone' => '0852-7788-9900',

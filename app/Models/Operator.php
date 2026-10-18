@@ -19,6 +19,7 @@ class Operator extends Authenticatable
 
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
         'phone',

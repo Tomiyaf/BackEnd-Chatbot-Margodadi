@@ -21,14 +21,18 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:150'],
+            'username' => ['nullable', 'string', 'min:3', 'max:50', 'alpha_dash', 'unique:operators,username'],
             'email' => ['required', 'string', 'email', 'max:150', 'unique:operators,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'phone' => ['nullable', 'string', 'max:50'],
             'role' => ['nullable', 'string', 'in:ADMIN,OPERATOR'],
         ]);
 
+        $username = $validated['username'] ?? explode('@', $validated['email'])[0];
+
         $operator = Operator::create([
             'name' => $validated['name'],
+            'username' => $username,
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'phone' => $validated['phone'] ?? null,
@@ -80,7 +84,8 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $operator = Operator::where('email', $identifier)
+        $operator = Operator::where('username', $identifier)
+            ->orWhere('email', $identifier)
             ->orWhere('email', $identifier.'@margodadi.desa.id')
             ->orWhereRaw('LOWER(name) LIKE ?', ['%'.strtolower($identifier).'%'])
             ->first();

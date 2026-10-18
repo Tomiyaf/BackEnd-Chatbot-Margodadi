@@ -107,4 +107,62 @@ class AdminDashboardAndSettingsApiTest extends TestCase
             'llm_model' => 'gpt-4o',
         ]);
     }
+
+    public function test_operator_can_upload_avatar(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $file = \Illuminate\Http\UploadedFile::fake()->image('my_avatar.png', 200, 200);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$this->token)
+            ->postJson('/api/admin/settings/avatar', [
+                'avatar' => $file,
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'status' => 'success',
+            ]);
+
+        $this->admin->refresh();
+        $this->assertNotNull($this->admin->avatar_url);
+        $this->assertStringContainsString('storage/avatars/', $this->admin->avatar_url);
+    }
+
+    public function test_operator_can_reset_avatar_to_default_favicon(): void
+    {
+        $this->admin->update(['avatar_url' => 'https://example.com/custom.png']);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$this->token)
+            ->postJson('/api/admin/settings/avatar', [
+                'reset' => true,
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'status' => 'success',
+            ]);
+
+        $this->admin->refresh();
+        $this->assertNull($this->admin->avatar_url);
+    }
+
+    public function test_operator_can_upload_avatar_via_base64(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $base64Image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$this->token)
+            ->postJson('/api/admin/settings/avatar', [
+                'avatar_base64' => $base64Image,
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'status' => 'success',
+            ]);
+
+        $this->admin->refresh();
+        $this->assertNotNull($this->admin->avatar_url);
+        $this->assertStringContainsString('storage/avatars/', $this->admin->avatar_url);
+    }
 }

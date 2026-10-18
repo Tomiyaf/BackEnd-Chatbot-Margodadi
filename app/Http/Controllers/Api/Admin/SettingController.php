@@ -105,9 +105,23 @@ class SettingController extends Controller
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'string', 'max:150', 'unique:operators,email,'.$operator->operator_id.',operator_id'],
             'phone' => ['nullable', 'string', 'max:50'],
+            'avatar_url' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $operator->update($validated);
+        if ($request->hasFile('avatar')) {
+            $request->validate([
+                'avatar' => ['image', 'mimes:jpeg,png,jpg,webp,svg', 'max:5120'],
+            ]);
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $operator->avatar_url = asset('storage/' . $path);
+        } elseif ($request->has('avatar_url')) {
+            $operator->avatar_url = $validated['avatar_url'];
+        }
+
+        $operator->name = $validated['name'];
+        $operator->email = $validated['email'];
+        $operator->phone = $validated['phone'] ?? null;
+        $operator->save();
 
         ActivityLog::create([
             'operator_id' => $operator->operator_id,
@@ -126,6 +140,131 @@ class SettingController extends Controller
                 'operator' => $operator->fresh(),
             ],
         ]);
+    }
+
+    /**
+     * Update or reset operator avatar.
+     */
+    public function updateAvatar(Request $request): JsonResponse
+    {
+        $operator = $request->user();
+
+        // 1. Reset to default (favicon)
+        if ($request->boolean('reset') || $request->input('reset') === 'true' || $request->input('reset') === 1) {
+            $operator->avatar_url = null;
+            $operator->save();
+
+            ActivityLog::create([
+                'operator_id' => $operator->operator_id,
+                'actor_name' => $operator->name,
+                'action' => 'AVATAR_UPDATE',
+                'target' => '#OP-'.str_pad($operator->operator_id, 2, '0', STR_PAD_LEFT),
+                'description' => "Aparatur {$operator->name} mereset foto profil ke default favicon",
+                'channel' => ChannelType::WEB,
+                'created_at' => now(),
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Foto profil berhasil direset ke favicon bawaan.',
+                'data' => [
+                    'operator' => $operator->fresh(),
+                ],
+            ]);
+        }
+
+        // 2. Upload physical image file
+        if ($request->hasFile('avatar')) {
+            $request->validate([
+                'avatar' => ['required', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:5120'],
+            ], [
+                'avatar.required' => 'Mohon pilih berkas gambar foto profil.',
+                'avatar.image' => 'File harus berupa gambar.',
+                'avatar.mimes' => 'Format gambar yang didukung: JPEG, PNG, JPG, WebP, SVG.',
+                'avatar.max' => 'Ukuran gambar maksimal 5MB.',
+            ]);
+
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $operator->avatar_url = asset('storage/' . $path);
+            $operator->save();
+
+            ActivityLog::create([
+                'operator_id' => $operator->operator_id,
+                'actor_name' => $operator->name,
+                'action' => 'AVATAR_UPDATE',
+                'target' => '#OP-'.str_pad($operator->operator_id, 2, '0', STR_PAD_LEFT),
+                'description' => "Aparatur {$operator->name} memperbarui foto profil",
+                'channel' => ChannelType::WEB,
+                'created_at' => now(),
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Foto profil berhasil diperbarui.',
+                'data' => [
+                    'operator' => $operator->fresh(),
+                ],
+            ]);
+        }
+
+        // 3. Base64 image upload fallback
+        $base64Input = $request->input('avatar_base64') ?? $request->input('avatar');
+        if (is_string($base64Input) && preg_match('/^data:image\/(\w+);base64,/', $base64Input, $matches)) {
+            $imageType = strtolower($matches[1]);
+            if ($imageType === 'jpeg') {
+                $imageType = 'jpg';
+            }
+            $cleanBase64 = substr($base64Input, strpos($base64Input, ',') + 1);
+            $binaryData = base64_decode($cleanBase64);
+
+            if ($binaryData !== false) {
+                $fileName = 'avatars/avatar_' . $operator->operator_id . '_' . time() . '.' . $imageType;
+                \Illuminate\Support\Facades\Storage::disk('public')->put($fileName, $binaryData);
+                $operator->avatar_url = asset('storage/' . $fileName);
+                $operator->save();
+
+                ActivityLog::create([
+                    'operator_id' => $operator->operator_id,
+                    'actor_name' => $operator->name,
+                    'action' => 'AVATAR_UPDATE',
+                    'target' => '#OP-'.str_pad($operator->operator_id, 2, '0', STR_PAD_LEFT),
+                    'description' => "Aparatur {$operator->name} memperbarui foto profil",
+                    'channel' => ChannelType::WEB,
+                    'created_at' => now(),
+                ]);
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Foto profil berhasil diperbarui.',
+                    'data' => [
+                        'operator' => $operator->fresh(),
+                    ],
+                ]);
+            }
+        }
+
+        // 4. Direct URL
+        if ($request->filled('avatar_url')) {
+            $request->validate([
+                'avatar_url' => ['required', 'string', 'max:500'],
+            ]);
+
+            $operator->avatar_url = $request->input('avatar_url');
+            $operator->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Foto profil berhasil diperbarui.',
+                'data' => [
+                    'operator' => $operator->fresh(),
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Mohon pilih berkas gambar foto profil.',
+        ], 422);
     }
 
     /**
