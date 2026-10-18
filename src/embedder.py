@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import json
 import math
+import time
 from typing import Any
 import urllib.error
 import urllib.request
@@ -91,68 +92,76 @@ class APIEmbedder(BaseEmbedder):
         self.batch_size = max(1, batch_size or EMBEDDING_BATCH_SIZE)
 
     def _send_request_httpx(self, url: str, headers: dict[str, str], payload: dict[str, Any]) -> dict[str, Any]:
-        """Kirim request menggunakan library httpx."""
+        """Kirim request menggunakan library httpx dengan retry cerdas saat rate limit (429)."""
+        max_retries = 6
         with httpx.Client(timeout=self.timeout) as client:
-            try:
-                response = client.post(url, headers=headers, json=payload)
-            except httpx.TimeoutException as exc:
-                raise RuntimeError(
-                    f"Embedding API timeout ({self.timeout} detik) saat memanggil {url} "
-                    f"dengan model '{self.model}'."
-                ) from exc
-            except httpx.RequestError as exc:
-                raise RuntimeError(
-                    f"Koneksi ke Embedding API gagal: {exc}"
-                ) from exc
+            for attempt in range(max_retries):
+                try:
+                    response = client.post(url, headers=headers, json=payload)
+                except (httpx.TimeoutException, httpx.RequestError) as exc:
+                    if attempt < max_retries - 1:
+                        time.sleep(3)
+                        continue
+                    raise RuntimeError(f"Koneksi Embedding API gagal: {exc}") from exc
 
-            if response.status_code in (401, 403):
-                raise RuntimeError(
-                    f"Autentikasi Embedding API gagal ({response.status_code}): "
-                    f"API key salah atau tidak memiliki akses. Detail: {response.text[:300]}"
-                )
+                if response.status_code in (401, 403):
+                    raise RuntimeError(
+                        f"Autentikasi Embedding API gagal ({response.status_code}): "
+                        f"API key salah atau tidak memiliki akses. Detail: {response.text[:300]}"
+                    )
 
-            if response.status_code == 429:
-                raise RuntimeError(
-                    f"Embedding API mencapai batas kuota / rate limit (429): "
-                    f"{response.text[:300]}"
-                )
+                if response.status_code == 429:
+                    if attempt < max_retries - 1:
+                        wait_seconds = (attempt + 1) * 7
+                        print(f"⏳ Rate limit API (429) tercapai. Menunggu {wait_seconds} detik sebelum mencoba lagi (percobaan {attempt + 1}/{max_retries})...")
+                        time.sleep(wait_seconds)
+                        continue
+                    raise RuntimeError(
+                        f"Embedding API mencapai batas kuota / rate limit (429): "
+                        f"{response.text[:300]}"
+                    )
 
-            try:
-                response.raise_for_status()
-            except httpx.HTTPStatusError as exc:
-                raise RuntimeError(
-                    f"Embedding API error ({exc.response.status_code}): {exc.response.text[:500]}"
-                ) from exc
+                try:
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as exc:
+                    raise RuntimeError(
+                        f"Embedding API error ({exc.response.status_code}): {exc.response.text[:500]}"
+                    ) from exc
 
-            return response.json()
+                return response.json()
 
     def _send_request_urllib(self, url: str, headers: dict[str, str], payload: dict[str, Any]) -> dict[str, Any]:
-        """Kirim request menggunakan standard library urllib (fallback tanpa dependensi eksternal)."""
+        """Kirim request menggunakan standard library urllib dengan retry cerdas saat 429."""
         data_bytes = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(url, data=data_bytes, headers=headers, method="POST")
-
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                response_text = resp.read().decode("utf-8")
-                return json.loads(response_text)
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="ignore")[:400]
-            if exc.code in (401, 403):
-                raise RuntimeError(
-                    f"Autentikasi Embedding API gagal ({exc.code}): "
-                    f"API key salah atau tidak memiliki akses. Detail: {detail}"
-                ) from exc
-            if exc.code == 429:
-                raise RuntimeError(
-                    f"Embedding API mencapai batas kuota / rate limit (429): {detail}"
-                ) from exc
-            raise RuntimeError(
-                f"Embedding API error ({exc.code}): {detail}"
-            ) from exc
-        except urllib.error.URLError as exc:
-            raise RuntimeError(
-                f"Koneksi ke Embedding API gagal: {exc.reason}"
-            ) from exc
+        max_retries = 6
+        for attempt in range(max_retries):
+            req = urllib.request.Request(url, data=data_bytes, headers=headers, method="POST")
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    response_text = resp.read().decode("utf-8")
+                    return json.loads(response_text)
+            except urllib.error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="ignore")[:400]
+                if exc.code in (401, 403):
+                    raise RuntimeError(
+                        f"Autentikasi Embedding API gagal ({exc.code}): "
+                        f"API key salah atau tidak memiliki akses. Detail: {detail}"
+                    ) from exc
+                if exc.code == 429:
+                    if attempt < max_retries - 1:
+                        wait_seconds = (attempt + 1) * 7
+                        print(f"⏳ Rate limit API (429) tercapai. Menunggu {wait_seconds} detik sebelum mencoba lagi...")
+                        time.sleep(wait_seconds)
+                        continue
+                    raise RuntimeError(
+                        f"Embedding API mencapai batas kuota / rate limit (429): {detail}"
+                    ) from exc
+                raise RuntimeError(f"Embedding API error ({exc.code}): {detail}") from exc
+            except urllib.error.URLError as exc:
+                if attempt < max_retries - 1:
+                    time.sleep(3)
+                    continue
+                raise RuntimeError(f"Koneksi ke Embedding API gagal: {exc.reason}") from exc
 
     def _send_request(self, url: str, headers: dict[str, str], payload: dict[str, Any]) -> dict[str, Any]:
         if HAS_HTTPX:
@@ -244,6 +253,8 @@ class APIEmbedder(BaseEmbedder):
             batch = texts[i : i + self.batch_size]
             batch_embeddings = self._encode_batch(batch)
             all_embeddings.extend(batch_embeddings)
+            if i + self.batch_size < len(texts):
+                time.sleep(1.2)
 
         return all_embeddings
 

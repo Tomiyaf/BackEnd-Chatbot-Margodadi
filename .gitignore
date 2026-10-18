@@ -53,7 +53,8 @@ logs/
 Vector.db/
 
 # Local/private RAG assets
-Data/
+/Data/
+!database/data/
 models/
 
 # OS/editor files
