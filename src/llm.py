@@ -30,9 +30,10 @@ class APILLM:
                 "role": "system",
                 "content": (
                     "Anda adalah asisten informasi desa. Jawab dalam Bahasa Indonesia "
-                    "secara jelas, singkat, dan natural dalam kalimat lengkap. "
-                    "Jangan menjawab hanya dengan potongan kata atau nama jika bisa "
-                    "dibuat menjadi kalimat utuh. Gunakan hanya konteks yang diberikan. "
+                    "secara jelas dan singkat. Ikuti format jawaban yang diminta pada prompt: "
+                    "langkah/prosedur sebagai daftar bernomor, persyaratan sebagai poin-poin, "
+                    "dan fakta/identitas sebagai kalimat natural. Tulis setiap butir pada baris baru. "
+                    "Gunakan hanya konteks yang diberikan; jangan mengarang tahapan atau urutannya. "
                     "Jika konteks berasal dari basis pengetahuan Pekon Margodadi, "
                     "perlakukan informasi tersebut sebagai data Pekon Margodadi. "
                     "Jika satuan di konteks berbeda dari pertanyaan, jawab dengan "

@@ -2,6 +2,7 @@ from src.config import RAG_TOP_K
 from src.llm import APILLM
 from src.retriever import Retriever, SearchResult
 from src.umkm_directory import UmkmDirectory
+from src.answer_format import formatting_instruction, normalize_answer_layout, requested_format
 
 
 def build_prompt(question: str, contexts: list[SearchResult]) -> str:
@@ -18,6 +19,7 @@ def build_prompt(question: str, contexts: list[SearchResult]) -> str:
         "Semua konteks yang diberikan berasal dari dokumen yang sudah diunggah "
         "ke basis pengetahuan Pekon Margodadi, kecuali konteks menyatakan hal lain.\n"
         "Jawab pertanyaan hanya berdasarkan konteks.\n"
+        f"{formatting_instruction(question)}"
         "Gunakan kalimat lengkap. Untuk pertanyaan identitas atau fakta tunggal, "
         "jawab dengan kalimat natural, misalnya: \"Kepala Desa Pekon Margodadi "
         "adalah Pak/Bu ...\" jika nama tersedia di konteks.\n"
@@ -30,7 +32,10 @@ def build_prompt(question: str, contexts: list[SearchResult]) -> str:
         "jelaskan singkat perbedaan satuannya.\n"
         "Jangan meminta daftar keluarga mentah jika konteks sudah memuat jumlah agregat.\n"
         "Jika informasi benar-benar tidak ada di konteks, jawab: "
-        "\"Maaf, informasi tersebut tidak tersedia dalam data.\"\n\n"
+        "\"Maaf, informasi tersebut tidak tersedia dalam data.\" "
+        "Gunakan kalimat tersebut sebagai satu-satunya jawaban hanya ketika tidak ada informasi yang menjawab pertanyaan. "
+        "Jangan menambahkannya setelah jawaban yang sudah menjawab pertanyaan. "
+        "Jika hanya sebagian informasi tidak tersedia, jelaskan bagian yang belum tersedia secara spesifik.\n\n"
         f"Konteks:\n{context_text}\n\n"
         f"Pertanyaan:\n{question}"
     )
@@ -68,5 +73,10 @@ class RAGService:
         if self.llm is None:
             self.llm = APILLM()
 
-        answer = self.llm.generate(prompt)
+        if requested_format(question) == 'plain':
+            answer = self.llm.generate(prompt)
+        else:
+            # Leave room for complete lists instead of cutting a procedure mid-step.
+            answer = self.llm.generate(prompt, max_new_tokens=768)
+        answer = normalize_answer_layout(question, answer)
         return answer, contexts

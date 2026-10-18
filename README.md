@@ -74,6 +74,25 @@ dapat ditulis proses Python. Ingatan tetap tersedia setelah API di-restart.
 Permintaan API lama tanpa `umkm_catalogue` tetap memakai alur RAG sebelumnya.
 Tidak ada migrasi tabel Laravel atau perubahan frontend yang diperlukan.
 
+### Format jawaban prosedur dan persyaratan
+
+Python mengenali pertanyaan langkah, tahapan, alur, prosedur, atau cara
+pengurusan dan meminta model menuliskan setiap tindakan pada baris bernomor.
+Pertanyaan syarat/dokumen/perlengkapan memakai poin `- `. Jika keduanya
+ditanyakan, jawaban memisahkan bagian persyaratan dan langkah-langkah.
+Pertanyaan fakta atau identitas tetap memakai kalimat natural.
+
+Format tetap mengikuti informasi sumber. Jika sumber hanya memuat
+persyaratan, bot menjelaskan bahwa urutan prosedur tidak tersedia dan tidak
+mengubah persyaratan menjadi tahapan rekaan. Normalisasi jawaban hanya
+merapikan penanda daftar dan baris baru; angka, tanggal, biaya, satuan,
+kondisi, dan rujukan sumber tetap dipertahankan. Anggaran keluaran untuk
+jawaban berformat daftar dinaikkan ke 768 token agar beberapa butir dapat
+ditulis lengkap. Jawaban fakta tetap memakai anggaran sebelumnya.
+
+Tampilan chat publik sudah memakai `whitespace-pre-wrap`, sehingga daftar
+teks dapat ditampilkan tanpa perubahan frontend atau struktur database.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
