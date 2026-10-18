@@ -58,3 +58,6 @@ models/
 # OS/editor files
 .DS_Store
 Thumbs.db
+
+# Private deployment notes
+DEPLOYMENT_GUIDE_UBUNTU.md
