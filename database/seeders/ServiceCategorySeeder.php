@@ -31,14 +31,6 @@ class ServiceCategorySeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'name' => 'Edukasi Pengelolaan Sampah',
-                'slug' => 'edukasi-sampah',
-                'domain' => ServiceDomain::WASTE_EDUCATION,
-                'icon' => 'recycling',
-                'description' => 'Program Bank Sampah Berkah, jadwal penimbangan, dan panduan komposting',
-                'is_active' => true,
-            ],
-            [
                 'name' => 'Informasi Publik & Pengaduan',
                 'slug' => 'informasi-publik',
                 'domain' => ServiceDomain::PUBLIC_SERVICE,

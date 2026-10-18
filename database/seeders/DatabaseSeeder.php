@@ -17,7 +17,6 @@ class DatabaseSeeder extends Seeder
             UmkmSeeder::class,
             OperatorSeeder::class,
             ConversationSeeder::class,
-            EducationSeeder::class,
             KbDocumentSeeder::class,
         ]);
     }

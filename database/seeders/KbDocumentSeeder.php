@@ -39,18 +39,6 @@ class KbDocumentSeeder extends Seeder
                     'Madu Klanceng Trigona Dusun 4: Madu murni lebah tanpa sengat kaya antioksidan dan enzim alami. Hubungi Ibu Sumarni di 0811-2233-4455.',
                 ],
             ],
-            [
-                'title' => 'Buku Panduan Edukasi 3R dan Tata Kelola Bank Sampah Berkah Margodadi',
-                'domain' => ServiceDomain::WASTE_EDUCATION,
-                'source' => 'Buku Pedoman TPS3R dan Bank Sampah Berkah Desa Margodadi 2026',
-                'validator' => 'Tim Pengelola Sampah',
-                'version' => 'v2.1',
-                'chunks' => [
-                    'Jadwal operasional penimbangan Bank Sampah Berkah diadakan setiap hari Minggu ke-2 dan ke-4 setiap bulan di Balai Dusun 1 Margodadi.',
-                    'Pilah sampah organik (sisa sayur/buah/daun) untuk pupuk kompos/magot BSF, sampah anorganik (kardus, botol plastik PET, kaleng, kaca), dan sampah B3 (baterai, botol pestisida).',
-                    'Biopori dan komposter komunal: Warga dapat mengambil bibit aktivator EM4 dan meminjam bor biopori di kantor TPS3R pekon secara gratis.',
-                ],
-            ],
         ];
 
         foreach ($documents as $docData) {

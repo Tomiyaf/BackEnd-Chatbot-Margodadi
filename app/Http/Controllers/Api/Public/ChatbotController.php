@@ -81,7 +81,7 @@ class ChatbotController extends Controller
                 'greeting' => [
                     'id' => 'msg-init-'.Str::random(6),
                     'sender' => 'bot',
-                    'text' => 'Halo Warga Pekon Margodadi! Saya **Virtual Guide resmi Pekon Margodadi**. Ada yang dapat saya bantu terkait administrasi surat, syarat perizinan, produk UMKM desa, atau panduan pengelolaan sampah mandiri hari ini?',
+                    'text' => 'Halo Warga Pekon Margodadi! Saya **Virtual Guide resmi Pekon Margodadi**. Ada yang dapat saya bantu terkait administrasi surat, syarat perizinan, atau produk UMKM desa hari ini?',
                     'timestamp' => now()->format('H:i').' WIB',
                 ],
             ],
@@ -383,32 +383,6 @@ class ChatbotController extends Controller
                 ],
                 'actions' => [
                     ['label' => 'Buka Halaman Layanan', 'link' => '/layanan-publik', 'icon' => 'badge'],
-                ],
-            ];
-        } elseif (str_contains($q, 'sampah') || str_contains($q, 'bank sampah') || str_contains($q, 'tps3r') || str_contains($q, 'maggot')) {
-            $cat = ServiceCategory::where('slug', 'fasilitas-desa')->first();
-            if ($cat) {
-                $conversation->update(['category_id' => $cat->category_id]);
-            }
-
-            $replyContent['text'] = 'Terkait **Pengelolaan Sampah & Bank Sampah Pekon Margodadi**, pekon kami menerapkan pemilahan 3 kategori (Organik, Anorganik/Daur Ulang, dan Residu).';
-            $replyContent['richContent'] = [
-                'checkpoints' => [
-                    'Penyetoran Bank Sampah: Setiap Sabtu (08.30 – 12.00 WIB)',
-                    'Sampah anorganik wajib bersih & kering (botol, kardus, plastik)',
-                    'Buku Tabungan Sampah diterbitkan gratis bagi nasabah baru',
-                    'Sampah organik diolah menjadi pakan maggot BSF & pupuk kompos',
-                ],
-                'sla' => 'Langsung Timbang & Catat',
-                'fee' => 'Mendapat Poin Tabungan',
-                'citation' => [
-                    'title' => 'Peraturan Pekon Margodadi No. 05/2023 tentang Pengelolaan Sampah Mandiri',
-                    'relevance' => '97%',
-                    'similarity' => 'Cosine Similarity 0.975',
-                    'quote' => '“Setiap rumah tangga didorong memilah sampah dari sumbernya untuk mendukung target Margodadi Bebas Sampah Liar 2026.”',
-                ],
-                'actions' => [
-                    ['label' => 'Pelajari Edukasi Sampah', 'link' => '/edukasi-sampah', 'icon' => 'recycling'],
                 ],
             ];
         } elseif (str_contains($q, 'kopi') || str_contains($q, 'bambu') || str_contains($q, 'keripik') || str_contains($q, 'madu') || str_contains($q, 'batik') || str_contains($q, 'bibit') || str_contains($q, 'umkm')) {

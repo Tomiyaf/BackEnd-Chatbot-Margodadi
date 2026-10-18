@@ -28,9 +28,4 @@ class User extends Model
     {
         return $this->hasMany(Feedback::class, 'user_id', 'user_id');
     }
-
-    public function researchSessions(): HasMany
-    {
-        return $this->hasMany(ResearchSession::class, 'user_id', 'user_id');
-    }
 }

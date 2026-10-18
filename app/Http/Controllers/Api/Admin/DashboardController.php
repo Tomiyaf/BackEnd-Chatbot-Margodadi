@@ -7,7 +7,6 @@ use App\Enums\SenderType;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Conversation;
-use App\Models\EducationTopic;
 use App\Models\Feedback;
 use App\Models\Message;
 use App\Models\Operator;
@@ -200,7 +199,6 @@ class DashboardController extends Controller
         // Dynamic Knowledge Base status computed from DB
         $pubLatest = PublicService::latest('updated_at')->value('updated_at');
         $umkmLatest = Umkm::latest('updated_at')->value('updated_at');
-        $eduLatest = EducationTopic::latest('updated_at')->value('updated_at');
         $catLatest = ServiceCategory::latest('updated_at')->value('updated_at');
 
         $formatUpdate = fn($dt) => $dt ? Carbon::parse($dt)->translatedFormat('d M Y') : 'Terbaru';
@@ -219,13 +217,6 @@ class DashboardController extends Controller
                 'itemCount' => Umkm::count(),
                 'validator' => 'Kaur Perencanaan',
                 'updatedAt' => $formatUpdate($umkmLatest),
-            ],
-            [
-                'domain' => 'Edukasi 3R & Bank Sampah Margodadi',
-                'version' => 'v2.1',
-                'itemCount' => EducationTopic::count(),
-                'validator' => 'Tim Pengelola Sampah',
-                'updatedAt' => $formatUpdate($eduLatest),
             ],
             [
                 'domain' => 'SOP Diskresi & Regulasi Aparatur Pekon',

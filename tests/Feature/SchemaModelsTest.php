@@ -8,14 +8,11 @@ use App\Enums\HitlEventType;
 use App\Enums\OperatorRole;
 use App\Enums\OperatorStatus;
 use App\Enums\PriorityLevel;
-use App\Enums\ResearchSessionStatus;
 use App\Enums\SenderType;
 use App\Enums\ServiceDomain;
 use App\Models\ActivityLog;
 use App\Models\Conversation;
 use App\Models\ConversationAssignment;
-use App\Models\EducationExposure;
-use App\Models\EducationTopic;
 use App\Models\Feedback;
 use App\Models\HitlEvent;
 use App\Models\KbChunk;
@@ -26,7 +23,6 @@ use App\Models\PublicService;
 use App\Models\RagConfiguration;
 use App\Models\RagInteraction;
 use App\Models\RagRetrieval;
-use App\Models\ResearchSession;
 use App\Models\ServiceCategory;
 use App\Models\SystemLog;
 use App\Models\Umkm;
@@ -222,44 +218,7 @@ class SchemaModelsTest extends TestCase
         ]);
         $this->assertEquals(5, $feedback->rating);
 
-        // 17. Research Session
-        $session = ResearchSession::create([
-            'user_id' => $user->user_id,
-            'conversation_id' => $conversation->conversation_id,
-            'anonymous_code' => 'ANON-001',
-            'education_version' => 'v1.2',
-            'quiz_score' => 90.00,
-            'status' => ResearchSessionStatus::COMPLETED,
-            'started_at' => now(),
-            'completed_at' => now(),
-            'created_at' => now(),
-        ]);
-        $this->assertEquals(ResearchSessionStatus::COMPLETED, $session->status);
-
-        // 18. Education Topic
-        $topic = EducationTopic::create([
-            'name' => 'Edukasi Pengelolaan Sampah Organik',
-            'slug' => 'edukasi-pengelolaan-sampah-organik',
-            'description' => 'Materi pemilahan sampah organik dan komposting rumah tangga',
-            'knowledge_base_version' => 'v1.0',
-            'sequence_order' => 1,
-            'is_active' => true,
-        ]);
-        $this->assertNotNull($topic->topic_id);
-
-        // 19. Education Exposure
-        $exposure = EducationExposure::create([
-            'research_session_id' => $session->research_session_id,
-            'topic_id' => $topic->topic_id,
-            'interaction_count' => 3,
-            'quiz_score' => 95.00,
-            'started_at' => now(),
-            'completed_at' => now(),
-            'created_at' => now(),
-        ]);
-        $this->assertEquals($topic->topic_id, $exposure->topic->topic_id);
-
-        // 20. Activity Log
+        // 17. Activity Log
         $activityLog = ActivityLog::create([
             'operator_id' => $operator->operator_id,
             'actor_name' => $operator->name,
