@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Conversation;
+use App\Models\Message;
 use App\Models\Operator;
 use App\Models\PublicService;
 use App\Models\ServiceCategory;
@@ -149,4 +150,59 @@ class PublicPortalAndChatbotApiTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('message', 'Terima kasih, umpan balik Anda berhasil disimpan.');
     }
+
+    public function test_can_submit_message_thumbs_feedback(): void
+    {
+        $user = User::create(['anonymous_code' => 'WARGA-FEEDBACK-TEST']);
+
+        $conv = Conversation::create([
+            'user_id' => $user->user_id,
+            'channel' => 'WEB',
+            'status' => 'OPEN',
+            'external_conversation_id' => 'SESS-TEST-THUMBS',
+            'needs_human' => false,
+        ]);
+
+        $msg = Message::create([
+            'conversation_id' => $conv->conversation_id,
+            'sender_type' => \App\Enums\SenderType::BOT,
+            'content' => 'Jawaban SOP pekon...',
+        ]);
+
+        // 1. Test positive feedback with message_id string format
+        $resPositive = $this->postJson('/api/public/chatbot/feedback', [
+            'message_id' => 'msg-bot-' . $msg->message_id,
+            'type' => 'positive',
+            'session_id' => 'SESS-TEST-THUMBS',
+        ]);
+
+        $resPositive->assertStatus(200)
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('data.rating', 5)
+            ->assertJsonPath('data.message_id', $msg->message_id);
+
+        $this->assertDatabaseHas('feedback', [
+            'message_id' => $msg->message_id,
+            'rating' => 5,
+            'comment' => 'Jawaban Membantu',
+        ]);
+
+        // 2. Test negative feedback
+        $resNegative = $this->postJson('/api/public/chatbot/feedback', [
+            'message_id' => $msg->message_id,
+            'type' => 'negative',
+            'conversation_id' => $conv->conversation_id,
+        ]);
+
+        $resNegative->assertStatus(200)
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('data.rating', 1);
+
+        $this->assertDatabaseHas('feedback', [
+            'message_id' => $msg->message_id,
+            'rating' => 1,
+            'comment' => 'Kurang Akurat',
+        ]);
+    }
 }
+
