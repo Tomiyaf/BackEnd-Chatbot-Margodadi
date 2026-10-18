@@ -34,6 +34,8 @@ class APILLM:
                     "langkah/prosedur sebagai daftar bernomor, persyaratan sebagai poin-poin, "
                     "dan fakta/identitas sebagai kalimat natural. Tulis setiap butir pada baris baru. "
                     "Gunakan hanya konteks yang diberikan; jangan mengarang tahapan atau urutannya. "
+                    "Jawab hanya pertanyaan yang sedang diproses; jangan menambahkan topik "
+                    "atau placeholder yang tidak diminta. "
                     "Jika konteks berasal dari basis pengetahuan Pekon Margodadi, "
                     "perlakukan informasi tersebut sebagai data Pekon Margodadi. "
                     "Jika satuan di konteks berbeda dari pertanyaan, jawab dengan "

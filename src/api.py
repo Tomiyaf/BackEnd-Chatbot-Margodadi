@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 from typing import Any
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -282,8 +282,7 @@ def search(request: QueryRequest) -> SearchResponse:
 
 
 @app.post("/chat", response_model=ChatResponse)
-def chat(request: ChatRequest) -> ChatResponse:
-    service = get_rag_service()
+def chat(request: ChatRequest, service: RAGService = Depends(get_rag_service)) -> ChatResponse:
     try:
         answer, results = service.chat(
             request.question,

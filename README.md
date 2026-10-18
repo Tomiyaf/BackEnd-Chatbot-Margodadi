@@ -93,6 +93,46 @@ ditulis lengkap. Jawaban fakta tetap memakai anggaran sebelumnya.
 Tampilan chat publik sudah memakai `whitespace-pre-wrap`, sehingga daftar
 teks dapat ditampilkan tanpa perubahan frontend atau struktur database.
 
+### Beberapa pertanyaan dalam satu pesan
+
+Chatbot memisahkan permintaan yang jelas menjadi beberapa bagian sebelum
+menjawab. Contohnya, "Apa saja UMKM di Pekon Margodadi dan bagaimana cara
+mengurus surat nikah?" menghasilkan bagian daftar UMKM dan bagian prosedur
+surat nikah. Pesan dapat memuat lebih dari dua pertanyaan. Pemisahan mengenali
+kata tanya/perintah setelah penghubung, tanda tanya, titik koma, dan daftar
+pertanyaan bernomor. Frasa seperti "KTP dan KK" tetap satu bagian.
+
+Setiap bagian memperoleh hasil pencarian `top_k` sendiri. Daftar UMKM tetap
+menggunakan katalog aktif dari Laravel. Rujukan singkat yang subjeknya jelas
+dalam pesan, misalnya "bagaimana cara membuatnya" setelah pertanyaan surat
+nikah, diselesaikan sebelum pencarian. Subjek yang ambigu tidak ditebak.
+Kalimat yang tidak memiliki batas pertanyaan yang jelas tetap memakai alur
+RAG biasa; pemisah ini tidak memanggil model tambahan untuk menafsirkan pesan.
+
+Jawaban disusun menurut urutan pertanyaan dengan label `Pertanyaan 1:`,
+`Pertanyaan 2:`, dan seterusnya. Syarat memakai poin, prosedur memakai nomor,
+dan bagian yang datanya tidak ditemukan menyatakan keterbatasan itu tanpa
+menutupi jawaban bagian lain. Gangguan layanan dibedakan dari ketiadaan data.
+Sumber yang sama digabung tanpa mengubah metadata atau kontrak respons API.
+
+Pesan yang memuat daftar UMKM bersama topik lain mempertahankan ingatan
+daftarnya, sehingga "UMKM lainnya?" pada pesan berikutnya menampilkan nama
+yang belum disebutkan. Pesan berikutnya yang sepenuhnya beralih topik tetap
+mengakhiri konteks daftar. Retrieval dilakukan berurutan; maksimal tiga
+generasi jawaban berjalan bersamaan untuk mengurangi waktu tunggu. Pesan
+dengan banyak pertanyaan tetap dapat memerlukan waktu lebih lama.
+
+Uji tanpa database aplikasi:
+
+```powershell
+.\.venv\Scripts\python.exe -B -m unittest discover -s tests/python -p test_multi_question.py -v
+.\.venv\Scripts\python.exe -B -m unittest discover -s tests/python -p test_answer_format.py -v
+.\.venv\Scripts\python.exe -B -m unittest discover -s tests/python -p test_umkm_conversation.py -v
+```
+
+`test_retired_retrieval.py` adalah uji integrasi terpisah yang memerlukan
+`RAG_TEST_DATABASE_URL` menuju salinan database berawalan `step9_chatbot_`.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

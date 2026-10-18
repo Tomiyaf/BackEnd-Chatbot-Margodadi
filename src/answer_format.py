@@ -45,7 +45,9 @@ def formatting_instruction(question: str) -> str:
     if layout == 'requirements':
         return common + (
             'Format jawaban: daftar poin dengan awalan "- " untuk persyaratan, dokumen, atau perlengkapan. '
-            'Satu persyaratan per butir. Keterangan biaya atau waktu bukan persyaratan tambahan.\n'
+            'Satu persyaratan per butir. Langsung tulis daftar persyaratannya, tanpa kategori '
+            'tambahan seperti "Fakta/Identitas". Keterangan lokasi, kontak, biaya, waktu, '
+            'dan instansi lanjutan bukan persyaratan; jangan menyertakannya kecuali ditanyakan.\n'
         )
     if layout == 'steps_and_requirements':
         return common + (

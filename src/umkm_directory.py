@@ -67,7 +67,8 @@ class UmkmDirectory:
                 conn.execute("DELETE FROM umkm_directory_sessions WHERE touched_at <= ?", (self.clock() - self.ttl,))
                 yield conn
 
-    def answer(self, question: str, session_id: str | None, catalogue: list[dict] | None):
+    def answer(self, question: str, session_id: str | None, catalogue: list[dict] | None,
+               *, reset_on_topic_change: bool = True):
         question = normalize_question(question)
         continuation = is_continuation(question)
         listing = is_directory_request(question)
@@ -77,7 +78,7 @@ class UmkmDirectory:
 
         if not listing and not continuation:
             # An ambiguous follow-up must not refer back to a list after a topic change.
-            if session_id and self.state_path.exists():
+            if reset_on_topic_change and session_id and self.state_path.exists():
                 with self.transaction() as conn:
                     conn.execute("DELETE FROM umkm_directory_sessions WHERE session_id = ?", (session_id,))
             return None
