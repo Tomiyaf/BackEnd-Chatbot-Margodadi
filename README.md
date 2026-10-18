@@ -7,6 +7,30 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Menyiapkan Laravel dan Python RAG lokal
+
+Jalankan dari root repository menggunakan PHP dan Composer yang tersedia di PATH.
+Untuk Python, gunakan Python 3.12 pada Windows:
+
+```powershell
+composer install
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-local.txt
+.\.venv\Scripts\python.exe -m pip check
+```
+
+`requirements.txt` berisi paket API. `requirements-local.txt` menyertakan paket
+tersebut beserta Sentence Transformers, Transformers, dan PyTorch CUDA 12.4
+untuk embedding BGE-M3 lokal. Paket Python dipasang di `.venv` repository ini,
+sedangkan paket Laravel dipasang di `vendor` repository ini.
+
+Siapkan `.env` untuk kedua layanan. Untuk BGE-M3, gunakan
+`EMBEDDING_PROVIDER=local`, `EMBEDDING_DIMENSION=1024`, dan arahkan
+`EMBEDDING_MODEL_PATH` ke folder model yang sudah tersedia. Atur koneksi
+PostgreSQL dan endpoint Ollama sesuai lingkungan lokal, kemudian jalankan
+`./start-api.ps1` untuk API Python. Pengaturan `.env`, bobot model, `.venv`,
+dan `vendor` tidak disimpan ke Git.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

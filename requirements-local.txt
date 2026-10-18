@@ -1,0 +1,8 @@
+# API dependencies from main, plus the local BGE-M3 runtime.
+-r requirements.txt
+
+# Match the PyTorch CUDA build already used by the local chatbot.
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0+cu124
+sentence-transformers==6.0.1
+transformers==5.17.0
