@@ -20,7 +20,7 @@ class PublicServiceSeeder extends Seeder
             [
                 'name' => 'Administrasi & Kependudukan',
                 'domain' => ServiceDomain::PUBLIC_SERVICE,
-                'icon' => 'id-card',
+                'icon' => 'badge',
                 'description' => 'Layanan pembuatan surat pengantar KTP, KK, Akta, dan Keterangan Domisili.',
                 'is_active' => true,
             ]
@@ -32,7 +32,7 @@ class PublicServiceSeeder extends Seeder
             [
                 'name' => 'Usaha & Perekonomian',
                 'domain' => ServiceDomain::PUBLIC_SERVICE,
-                'icon' => 'store',
+                'icon' => 'storefront',
                 'description' => 'Layanan surat perizinan usaha, rekomendasi KUR, dan legalitas UMKM pekon.',
                 'is_active' => true,
             ]
@@ -44,7 +44,7 @@ class PublicServiceSeeder extends Seeder
             [
                 'name' => 'Sosial & Kesejahteraan',
                 'domain' => ServiceDomain::PUBLIC_SERVICE,
-                'icon' => 'users',
+                'icon' => 'groups',
                 'description' => 'Layanan Surat Keterangan Tidak Mampu (SKTM), beasiswa, dan bantuan sosial.',
                 'is_active' => true,
             ]

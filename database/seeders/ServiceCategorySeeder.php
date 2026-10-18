@@ -18,7 +18,7 @@ class ServiceCategorySeeder extends Seeder
                 'name' => 'Layanan Kependudukan & Administrasi',
                 'slug' => 'layanan-kependudukan',
                 'domain' => ServiceDomain::PUBLIC_SERVICE,
-                'icon' => 'id-card',
+                'icon' => 'badge',
                 'description' => 'Layanan pengurusan SKU, SKTM, KTP, KK, dan Surat Keterangan Desa',
                 'is_active' => true,
             ],

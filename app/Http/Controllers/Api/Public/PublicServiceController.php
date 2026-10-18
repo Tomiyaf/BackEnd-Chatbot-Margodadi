@@ -61,14 +61,40 @@ class PublicServiceController extends Controller
             ];
         });
 
-        // Category summary list with dynamic counts
+        // Category summary list with dynamic counts from database
+        $dbCategories = ServiceCategory::query()
+            ->active()
+            ->domain(\App\Enums\ServiceDomain::PUBLIC_SERVICE)
+            ->whereHas('publicServices', fn ($q) => $q->active())
+            ->withCount(['publicServices' => fn ($q) => $q->active()])
+            ->orderBy('category_id', 'asc')
+            ->get();
+
         $categories = [
-            ['id' => 'all', 'name' => 'Semua Layanan Publik', 'icon' => 'category', 'count' => PublicService::where('is_active', true)->count()],
-            ['id' => 'administrasi-kependudukan', 'name' => 'Administrasi Kependudukan', 'icon' => 'badge', 'count' => PublicService::where('is_active', true)->whereHas('category', fn ($q) => $q->where('slug', 'administrasi-kependudukan'))->count()],
-            ['id' => 'surat-pengantar', 'name' => 'Surat Pengantar & Keterangan', 'icon' => 'description', 'count' => PublicService::where('is_active', true)->whereHas('category', fn ($q) => $q->where('slug', 'surat-pengantar'))->count()],
-            ['id' => 'sop-loket', 'name' => 'Standar Operasional (SOP) Loket', 'icon' => 'rule', 'count' => PublicService::where('is_active', true)->whereHas('category', fn ($q) => $q->where('slug', 'sop-loket'))->count()],
-            ['id' => 'fasilitas-desa', 'name' => 'Fasilitas & Sarpras Pekon', 'icon' => 'meeting_room', 'count' => PublicService::where('is_active', true)->whereHas('category', fn ($q) => $q->where('slug', 'fasilitas-desa'))->count()],
+            [
+                'id' => 'all',
+                'name' => 'Semua Layanan Publik',
+                'icon' => 'category',
+                'count' => PublicService::where('is_active', true)->count(),
+            ],
         ];
+
+        $iconMap = [
+            'id-card' => 'badge',
+            'users' => 'groups',
+            'user' => 'person',
+            'store' => 'storefront',
+        ];
+
+        foreach ($dbCategories as $cat) {
+            $rawIcon = $cat->icon ?: 'description';
+            $categories[] = [
+                'id' => $cat->slug,
+                'name' => $cat->name,
+                'icon' => $iconMap[$rawIcon] ?? $rawIcon,
+                'count' => (int) $cat->public_services_count,
+            ];
+        }
 
         return response()->json([
             'status' => 'success',

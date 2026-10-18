@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\ConversationController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\KnowledgeBaseController;
 use App\Http\Controllers\Api\Admin\OperatorController;
+use App\Http\Controllers\Api\Admin\PublicServiceController as AdminPublicServiceController;
 use App\Http\Controllers\Api\Admin\SettingController;
 use App\Http\Controllers\Api\Admin\UmkmController as AdminUmkmController;
 use App\Http\Controllers\Api\AuthController;
@@ -118,6 +119,20 @@ Route::middleware(['auth:sanctum', 'operator.activity'])->prefix('admin')->group
         Route::patch('/{id}/status', [AdminUmkmController::class, 'updateStatus']);
         Route::patch('/{id}/verify', [AdminUmkmController::class, 'verify']);
         Route::post('/{id}/sync-ai', [AdminUmkmController::class, 'syncToRag']);
+    });
+
+    // Public Services & Categories Back-Office Management (Admin & Operator Access)
+    Route::prefix('services')->group(function () {
+        Route::get('/categories', [AdminPublicServiceController::class, 'categories']);
+        Route::post('/categories', [AdminPublicServiceController::class, 'storeCategory']);
+        Route::put('/categories/{id}', [AdminPublicServiceController::class, 'updateCategory']);
+        Route::delete('/categories/{id}', [AdminPublicServiceController::class, 'destroyCategory']);
+        Route::get('/', [AdminPublicServiceController::class, 'index']);
+        Route::post('/', [AdminPublicServiceController::class, 'store']);
+        Route::get('/{id}', [AdminPublicServiceController::class, 'show']);
+        Route::put('/{id}', [AdminPublicServiceController::class, 'update']);
+        Route::delete('/{id}', [AdminPublicServiceController::class, 'destroy']);
+        Route::patch('/{id}/status', [AdminPublicServiceController::class, 'updateStatus']);
     });
 
     // Activity Logs
