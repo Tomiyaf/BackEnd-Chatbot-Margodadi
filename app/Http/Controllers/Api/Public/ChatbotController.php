@@ -144,6 +144,8 @@ class ChatbotController extends Controller
      */
     public function sendMessage(Request $request): JsonResponse
     {
+        set_time_limit((int) config('services.rag.chat_timeout', 240) + 30);
+
         $request->validate([
             'message' => 'required|string',
             'session_id' => 'nullable|string',

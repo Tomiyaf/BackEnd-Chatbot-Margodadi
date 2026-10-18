@@ -20,7 +20,7 @@ class RagGatewayService
         return $this->postJson('/chat', [
             'question' => $question,
             'top_k' => $topK,
-        ], 120)->json();
+        ], (int) config('services.rag.chat_timeout', 240))->json();
     }
 
     public function search(string $question, int $topK = 3): array
@@ -28,7 +28,7 @@ class RagGatewayService
         return $this->postJson('/search', [
             'question' => $question,
             'top_k' => $topK,
-        ], 60)->json();
+        ], (int) config('services.rag.search_timeout', 60))->json();
     }
 
     public function documents(): array
@@ -62,7 +62,7 @@ class RagGatewayService
 
     public function indexText(array $payload): array
     {
-        return $this->postJson('/documents/text', $payload, 120)->json();
+        return $this->postJson('/documents/text', $payload, (int) config('services.rag.index_timeout', 120))->json();
     }
 
     public function deleteDocument(int $documentId): bool

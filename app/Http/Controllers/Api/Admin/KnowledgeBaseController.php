@@ -153,6 +153,8 @@ class KnowledgeBaseController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        set_time_limit((int) config('services.rag.index_timeout', 300) + 30);
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'domain' => ['required', 'string', 'in:PUBLIC_SERVICE,UMKM,WASTE_EDUCATION'],
