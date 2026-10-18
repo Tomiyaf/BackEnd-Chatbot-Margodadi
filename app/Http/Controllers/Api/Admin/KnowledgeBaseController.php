@@ -44,7 +44,6 @@ class KnowledgeBaseController extends Controller
         $domainBreakdown = [
             'PUBLIC_SERVICE' => KbDocument::where('domain', ServiceDomain::PUBLIC_SERVICE)->count(),
             'UMKM' => KbDocument::where('domain', ServiceDomain::UMKM)->count(),
-            'WASTE_EDUCATION' => KbDocument::where('domain', ServiceDomain::WASTE_EDUCATION)->count(),
         ];
 
         $ragConfig = RagConfiguration::where('is_active', true)->latest('created_at')->first();
@@ -157,7 +156,7 @@ class KnowledgeBaseController extends Controller
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'domain' => ['required', 'string', 'in:PUBLIC_SERVICE,UMKM,WASTE_EDUCATION'],
+            'domain' => ['required', 'string', 'in:PUBLIC_SERVICE,UMKM'],
             'source' => ['nullable', 'string', 'max:255'],
             'validator' => ['nullable', 'string', 'max:100'],
             'version' => ['nullable', 'string', 'max:50'],
@@ -333,7 +332,7 @@ class KnowledgeBaseController extends Controller
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'domain' => ['required', 'string', 'in:PUBLIC_SERVICE,UMKM,WASTE_EDUCATION'],
+            'domain' => ['required', 'string', 'in:PUBLIC_SERVICE,UMKM'],
             'source' => ['nullable', 'string', 'max:255'],
             'validator' => ['nullable', 'string', 'max:100'],
             'version' => ['nullable', 'string', 'max:50'],

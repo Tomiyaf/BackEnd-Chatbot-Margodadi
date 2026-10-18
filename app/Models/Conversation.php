@@ -80,11 +80,6 @@ class Conversation extends Model
         return $this->hasMany(Feedback::class, 'conversation_id', 'conversation_id');
     }
 
-    public function researchSessions(): HasMany
-    {
-        return $this->hasMany(ResearchSession::class, 'conversation_id', 'conversation_id');
-    }
-
     public function systemLogs(): HasMany
     {
         return $this->hasMany(SystemLog::class, 'conversation_id', 'conversation_id');

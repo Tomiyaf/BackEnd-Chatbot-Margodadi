@@ -18,7 +18,7 @@ class ServiceCategorySeeder extends Seeder
                 'name' => 'Layanan Kependudukan & Administrasi',
                 'slug' => 'layanan-kependudukan',
                 'domain' => ServiceDomain::PUBLIC_SERVICE,
-                'icon' => 'id-card',
+                'icon' => 'badge',
                 'description' => 'Layanan pengurusan SKU, SKTM, KTP, KK, dan Surat Keterangan Desa',
                 'is_active' => true,
             ],
@@ -28,14 +28,6 @@ class ServiceCategorySeeder extends Seeder
                 'domain' => ServiceDomain::UMKM,
                 'icon' => 'storefront',
                 'description' => 'Informasi pendaftaran, etalase, dan legalitas produk UMKM Pekon Margodadi',
-                'is_active' => true,
-            ],
-            [
-                'name' => 'Edukasi Pengelolaan Sampah',
-                'slug' => 'edukasi-sampah',
-                'domain' => ServiceDomain::WASTE_EDUCATION,
-                'icon' => 'recycling',
-                'description' => 'Program Bank Sampah Berkah, jadwal penimbangan, dan panduan komposting',
                 'is_active' => true,
             ],
             [

@@ -4,9 +4,9 @@ use App\Http\Controllers\Api\Admin\ActivityLogController;
 use App\Http\Controllers\Api\Admin\AnalyticsController;
 use App\Http\Controllers\Api\Admin\ConversationController;
 use App\Http\Controllers\Api\Admin\DashboardController;
-use App\Http\Controllers\Api\Admin\EducationController;
 use App\Http\Controllers\Api\Admin\KnowledgeBaseController;
 use App\Http\Controllers\Api\Admin\OperatorController;
+use App\Http\Controllers\Api\Admin\PublicServiceController as AdminPublicServiceController;
 use App\Http\Controllers\Api\Admin\SettingController;
 use App\Http\Controllers\Api\Admin\UmkmController as AdminUmkmController;
 use App\Http\Controllers\Api\AuthController;
@@ -62,9 +62,6 @@ Route::prefix('public')->group(function () {
     Route::get('/umkms', [UmkmController::class, 'index']);
     Route::get('/umkms/{id}', [UmkmController::class, 'show']);
 
-    // Education Topics Directory
-    Route::get('/education/topics', [EducationController::class, 'topics']);
-
     // Chatbot & Virtual Guide
     Route::post('/chatbot/init', [ChatbotController::class, 'initSession']);
     Route::get('/chatbot/sync', [ChatbotController::class, 'syncMessages']);
@@ -89,12 +86,9 @@ Route::middleware(['auth:sanctum', 'operator.activity'])->prefix('admin')->group
     Route::get('/operators', [OperatorController::class, 'index']);
     Route::patch('/operators/{id}/status', [OperatorController::class, 'updateStatus']);
 
-    // Waste Education Monitoring
-    Route::get('/education/sessions', [EducationController::class, 'index']);
-    Route::get('/education/topics', [EducationController::class, 'topics']);
-
     // Analytics & SLA Performance
     Route::get('/analytics/overview', [AnalyticsController::class, 'overview']);
+    Route::get('/reports/export-csv', [AnalyticsController::class, 'exportCsv']);
 
     // Knowledge Base & AI Vector Store Management
     Route::prefix('knowledge-base')->group(function () {
@@ -111,9 +105,6 @@ Route::middleware(['auth:sanctum', 'operator.activity'])->prefix('admin')->group
         Route::delete('/chunks/{chunkId}', [KnowledgeBaseController::class, 'deleteChunk']);
     });
 
-    // Education Data Export
-    Route::get('/education/export-csv', [EducationController::class, 'exportCsv']);
-
     // UMKM & Potensi Desa Back-Office Management (Admin & Operator Access)
     Route::prefix('umkms')->group(function () {
         Route::get('/stats', [AdminUmkmController::class, 'stats']);
@@ -128,6 +119,20 @@ Route::middleware(['auth:sanctum', 'operator.activity'])->prefix('admin')->group
         Route::patch('/{id}/status', [AdminUmkmController::class, 'updateStatus']);
         Route::patch('/{id}/verify', [AdminUmkmController::class, 'verify']);
         Route::post('/{id}/sync-ai', [AdminUmkmController::class, 'syncToRag']);
+    });
+
+    // Public Services & Categories Back-Office Management (Admin & Operator Access)
+    Route::prefix('services')->group(function () {
+        Route::get('/categories', [AdminPublicServiceController::class, 'categories']);
+        Route::post('/categories', [AdminPublicServiceController::class, 'storeCategory']);
+        Route::put('/categories/{id}', [AdminPublicServiceController::class, 'updateCategory']);
+        Route::delete('/categories/{id}', [AdminPublicServiceController::class, 'destroyCategory']);
+        Route::get('/', [AdminPublicServiceController::class, 'index']);
+        Route::post('/', [AdminPublicServiceController::class, 'store']);
+        Route::get('/{id}', [AdminPublicServiceController::class, 'show']);
+        Route::put('/{id}', [AdminPublicServiceController::class, 'update']);
+        Route::delete('/{id}', [AdminPublicServiceController::class, 'destroy']);
+        Route::patch('/{id}/status', [AdminPublicServiceController::class, 'updateStatus']);
     });
 
     // Activity Logs

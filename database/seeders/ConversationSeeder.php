@@ -35,10 +35,9 @@ class ConversationSeeder extends Seeder
 
         $catAdmin = ServiceCategory::where('slug', 'layanan-kependudukan')->first();
         $catUmkm = ServiceCategory::where('slug', 'potensi-umkm')->first();
-        $catSampah = ServiceCategory::where('slug', 'edukasi-sampah')->first();
         $catInfo = ServiceCategory::where('slug', 'informasi-publik')->first();
 
-        $categories = [$catAdmin, $catUmkm, $catSampah, $catInfo];
+        $categories = [$catAdmin, $catUmkm, $catInfo];
         $operators = [$admin, $operator, $siti, $ahmad, $budi, $nurul];
 
         // ----------------------------------------------------
@@ -96,13 +95,13 @@ class ConversationSeeder extends Seeder
             ['assigned_at' => now()->subMinutes(15), 'created_at' => now()->subMinutes(15)]
         );
 
-        // 2. OPEN UNASSIGNED - URGENT (Ibu Ratna / Sampah)
+        // 2. OPEN UNASSIGNED - URGENT (Ibu Ratna / SKTM)
         $userRatna = User::firstOrCreate(['phone_number' => '081234567802'], ['anonymous_code' => 'ANON-WEB-092']);
         $conv2 = Conversation::updateOrCreate(
             ['external_conversation_id' => 'CV-00124'],
             [
                 'user_id' => $userRatna->user_id,
-                'category_id' => $catSampah?->category_id,
+                'category_id' => $catAdmin?->category_id,
                 'assigned_operator_id' => null,
                 'channel' => ChannelType::WEB,
                 'status' => ConversationStatus::OPEN,
@@ -115,20 +114,20 @@ class ConversationSeeder extends Seeder
             ]
         );
         Message::firstOrCreate(
-            ['conversation_id' => $conv2->conversation_id, 'content' => 'Halo, saya mau ikut program Bank Sampah Berkah Margodadi.'],
+            ['conversation_id' => $conv2->conversation_id, 'content' => 'Halo, saya mau menanyakan syarat pembuatan SKTM untuk pendaftaran beasiswa PIP anak saya.'],
             ['sender_type' => SenderType::USER, 'created_at' => now()->subMinutes(15)]
         );
         Message::firstOrCreate(
-            ['conversation_id' => $conv2->conversation_id, 'content' => 'Halo Ibu Ratna! Program Bank Sampah Berkah melayani penimbangan setiap hari Minggu ke-2 dan ke-4 di Balai Dusun 1. Kategori yang diterima meliputi kardus, botol plastik PET, kaleng, dan buku bekas.'],
+            ['conversation_id' => $conv2->conversation_id, 'content' => 'Halo Ibu Ratna! Berdasarkan SOP Pelayanan Pekon Margodadi, persyaratan SKTM meliputi: 1. Surat pengantar RT/RW, 2. Fotokopi KTP & Kartu Keluarga pemohon, 3. Surat keterangan dari sekolah.'],
             ['sender_type' => SenderType::BOT, 'created_at' => now()->subMinutes(14)]
         );
         Message::firstOrCreate(
-            ['conversation_id' => $conv2->conversation_id, 'content' => 'Apakah minyak jelantah bekas gorengan bisa disetor ke Bank Sampah Berkah? Saya ada 5 jerigen.'],
+            ['conversation_id' => $conv2->conversation_id, 'content' => 'Apakah perlu melampirkan foto kondisi rumah dan rekening listrik bulan terakhir?'],
             ['sender_type' => SenderType::USER, 'created_at' => now()->subMinutes(2)]
         );
         HitlEvent::firstOrCreate(
             ['conversation_id' => $conv2->conversation_id, 'event_type' => HitlEventType::NEED_HUMAN],
-            ['notes' => 'User menanyakan komoditas jelantah non-katalog', 'created_at' => now()->subMinutes(2)]
+            ['notes' => 'User menanyakan berkas pendukung verifikasi SKTM PIP', 'created_at' => now()->subMinutes(2)]
         );
 
         // 3. AHMAD FAUZI - ASSIGNED (Pak Hendra / UMKM)
@@ -229,13 +228,13 @@ class ConversationSeeder extends Seeder
             ['assigned_at' => now()->subMinutes(35), 'created_at' => now()->subMinutes(35)]
         );
 
-        // 6. OPERATOR MARGODADI - RESOLVED (Ibu Dewi / Edukasi Sampah)
+        // 6. OPERATOR MARGODADI - RESOLVED (Ibu Dewi / Info Publik)
         $userDewi = User::firstOrCreate(['phone_number' => '081234567805'], ['anonymous_code' => 'ANON-WA-005']);
         $conv6 = Conversation::updateOrCreate(
             ['external_conversation_id' => 'CV-00128'],
             [
                 'user_id' => $userDewi->user_id,
-                'category_id' => $catSampah?->category_id,
+                'category_id' => $catInfo?->category_id,
                 'assigned_operator_id' => $operator?->operator_id,
                 'channel' => ChannelType::WHATSAPP,
                 'status' => ConversationStatus::RESOLVED,
@@ -249,11 +248,11 @@ class ConversationSeeder extends Seeder
             ]
         );
         Message::firstOrCreate(
-            ['conversation_id' => $conv6->conversation_id, 'content' => 'Apakah botol kaca kecap dan sirup diterima di bank sampah pekon?'],
+            ['conversation_id' => $conv6->conversation_id, 'content' => 'Apakah pendaftaran bantuan BLT Dana Desa tahap 2 sudah dibuka jadwalnya?'],
             ['sender_type' => SenderType::USER, 'created_at' => now()->subHours(4)]
         );
         Message::firstOrCreate(
-            ['conversation_id' => $conv6->conversation_id, 'content' => 'Betul Bu Dewi, botol kaca sirup dan kecap diterima dengan tarif Rp 500/botol utuh tidak pecah.'],
+            ['conversation_id' => $conv6->conversation_id, 'content' => 'Selamat siang Bu Dewi, musyawarah penetapan calon penerima BLT DD tahap 2 akan diadakan tanggal 25 di Balai Pekon.'],
             ['sender_type' => SenderType::OPERATOR, 'operator_id' => $operator?->operator_id, 'created_at' => now()->subHours(3)->subMinutes(30)]
         );
         Feedback::firstOrCreate(
@@ -347,13 +346,13 @@ class ConversationSeeder extends Seeder
             ]
         );
 
-        // 11. NURUL HIDAYAH - ASSIGNED (Mas Rizky / Sampah)
+        // 11. NURUL HIDAYAH - ASSIGNED (Mas Rizky / Kependudukan)
         $userRizky = User::firstOrCreate(['phone_number' => '081234567808'], ['anonymous_code' => 'ANON-WA-008']);
         Conversation::updateOrCreate(
             ['external_conversation_id' => 'CV-00131'],
             [
                 'user_id' => $userRizky->user_id,
-                'category_id' => $catSampah?->category_id,
+                'category_id' => $catAdmin?->category_id,
                 'assigned_operator_id' => $nurul?->operator_id,
                 'channel' => ChannelType::WHATSAPP,
                 'status' => ConversationStatus::ASSIGNED,
@@ -393,7 +392,7 @@ class ConversationSeeder extends Seeder
             // Day -1 (Kemarin)
             ['days_ago' => 1, 'count' => 6, 'human_count' => 2, 'channel' => ChannelType::WHATSAPP, 'topic' => 'Kependudukan & UMKM'],
             // Day -2 (2 hari lalu)
-            ['days_ago' => 2, 'count' => 5, 'human_count' => 1, 'channel' => ChannelType::WEB, 'topic' => 'Edukasi Sampah'],
+            ['days_ago' => 2, 'count' => 5, 'human_count' => 1, 'channel' => ChannelType::WEB, 'topic' => 'Layanan SKTM & Bansos'],
             // Day -3 (3 hari lalu)
             ['days_ago' => 3, 'count' => 7, 'human_count' => 2, 'channel' => ChannelType::WHATSAPP, 'topic' => 'Layanan KTP/KK'],
             // Day -4 (4 hari lalu)

@@ -12,6 +12,7 @@ use App\Models\ServiceCategory;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AnalyticsController extends Controller
 {
@@ -181,6 +182,74 @@ class AnalyticsController extends Controller
                 'categories' => $categoryStats,
                 'operators' => $operators,
             ],
+        ]);
+    }
+
+    /**
+     * Export conversation and service analytics report as a streamed CSV.
+     */
+    public function exportCsv(Request $request): StreamedResponse
+    {
+        $period = strtoupper((string) $request->query('period', 'ALL'));
+        $fieldsParam = $request->query('fields');
+
+        $selectedFields = $fieldsParam
+            ? array_filter(explode(',', (string) $fieldsParam))
+            : ['respondentCode', 'topic', 'interactionCount', 'status', 'startedAt'];
+
+        $fieldHeaderMap = [
+            'respondentCode' => 'Kode Responden (Anonim)',
+            'sessionId' => 'ID Sesi Layanan',
+            'topic' => 'Kategori Layanan',
+            'interactionCount' => 'Jumlah Interaksi / Pertanyaan',
+            'status' => 'Status Percakapan',
+            'startedAt' => 'Waktu Mulai',
+            'completedAt' => 'Waktu Selesai',
+        ];
+
+        $headers = [];
+        foreach ($selectedFields as $f) {
+            $headers[] = $fieldHeaderMap[$f] ?? $f;
+        }
+
+        $query = Conversation::with(['category', 'user'])->orderBy('started_at', 'desc');
+        if ($period === 'MONTH') {
+            $query->where('started_at', '>=', Carbon::now()->subDays(30));
+        }
+
+        $filename = 'laporan_layanan_margodadi_' . Carbon::now()->format('Ymd_His') . '.csv';
+
+        return response()->stream(function () use ($query, $selectedFields, $headers) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+            fputcsv($handle, $headers);
+
+            $query->cursor()->each(function (Conversation $conv) use ($handle, $selectedFields) {
+                $interactionCount = $conv->messages()->count();
+
+                $dataMap = [
+                    'respondentCode' => $conv->citizen_name ?: ($conv->user?->anonymous_code ?? 'Warga Anonim'),
+                    'sessionId' => $conv->external_conversation_id ?? ('CV-' . $conv->conversation_id),
+                    'topic' => $conv->category?->name ?? 'Layanan Umum',
+                    'interactionCount' => $interactionCount,
+                    'status' => $conv->status instanceof ConversationStatus ? $conv->status->value : (string) $conv->status,
+                    'startedAt' => $conv->started_at ? Carbon::parse($conv->started_at)->format('Y-m-d H:i:s') : '-',
+                    'completedAt' => $conv->resolved_at ? Carbon::parse($conv->resolved_at)->format('Y-m-d H:i:s') : '-',
+                ];
+
+                $row = [];
+                foreach ($selectedFields as $fieldKey) {
+                    $row[] = $dataMap[$fieldKey] ?? '';
+                }
+
+                fputcsv($handle, $row);
+            });
+
+            fclose($handle);
+        }, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Cache-Control' => 'no-store, no-cache',
         ]);
     }
 }
