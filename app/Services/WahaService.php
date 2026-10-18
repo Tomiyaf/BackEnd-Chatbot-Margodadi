@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -248,4 +249,122 @@ class WahaService
             return false;
         }
     }
+
+    /**
+     * Get active WhatsApp Center phone number and profile info.
+     * Tries querying WAHA session /me or /api/sessions.
+     * Falls back to PEKON_WHATSAPP_NUMBER when WAHA is unavailable or not logged in.
+     */
+    public function getWhatsAppCenterInfo(): array
+    {
+        $fallbackNumber = (string) config('services.waha.fallback_phone', env('PEKON_WHATSAPP_NUMBER', '6285185222303'));
+        $cleanFallback = $this->sanitizePhoneNumber($fallbackNumber);
+
+        // Cache for 2 minutes to minimize WAHA requests while remaining reactive
+        return Cache::remember('waha_whatsapp_center_info', 120, function () use ($cleanFallback) {
+            try {
+                $session = $this->resolveSession();
+                $client = Http::timeout(3)->acceptJson();
+                if (! empty($this->apiKey)) {
+                    $client = $client->withHeaders(['X-Api-Key' => $this->apiKey]);
+                }
+
+                // 1. Try GET /api/sessions/{session}/me
+                $response = $client->get("{$this->baseUrl}/api/sessions/{$session}/me");
+                if ($response->successful() && ! empty($response->json('id'))) {
+                    $rawId = (string) $response->json('id');
+                    $phone = $this->sanitizePhoneNumber($rawId);
+                    if (! empty($phone)) {
+                        return $this->buildWhatsAppCenterPayload(
+                            phone: $phone,
+                            pushName: (string) ($response->json('pushName') ?: 'Pekon Margodadi'),
+                            session: $session,
+                            isOnline: true,
+                            source: 'waha'
+                        );
+                    }
+                }
+
+                // 2. Try GET /api/sessions and search for any WORKING session with me info
+                $sessionsResponse = $client->get("{$this->baseUrl}/api/sessions");
+                if ($sessionsResponse->successful() && is_array($sessionsResponse->json())) {
+                    foreach ($sessionsResponse->json() as $s) {
+                        if (($s['status'] ?? '') === 'WORKING' && ! empty($s['me']['id'])) {
+                            $phone = $this->sanitizePhoneNumber((string) $s['me']['id']);
+                            if (! empty($phone)) {
+                                return $this->buildWhatsAppCenterPayload(
+                                    phone: $phone,
+                                    pushName: (string) ($s['me']['pushName'] ?? 'Pekon Margodadi'),
+                                    session: (string) ($s['name'] ?? $session),
+                                    isOnline: true,
+                                    source: 'waha'
+                                );
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable $e) {
+                Log::debug('WAHA getWhatsAppCenterInfo fallback triggered', ['error' => $e->getMessage()]);
+            }
+
+            return $this->buildWhatsAppCenterPayload(
+                phone: $cleanFallback ?: '6285185222303',
+                pushName: 'Pekon Margodadi',
+                session: null,
+                isOnline: false,
+                source: 'fallback'
+            );
+        });
+    }
+
+    /**
+     * Sanitize phone number from WAHA JID/wid or input string into clean digits.
+     */
+    public function sanitizePhoneNumber(string $raw): string
+    {
+        // Extract portion before '@'
+        $beforeAt = explode('@', $raw)[0] ?? $raw;
+        // Extract portion before ':' (device identifier)
+        $beforeColon = explode(':', $beforeAt)[0] ?? $beforeAt;
+        // Keep only numbers
+        $digits = preg_replace('/[^0-9]/', '', $beforeColon);
+
+        // Normalize 08... to 628...
+        if (str_starts_with($digits, '08')) {
+            $digits = '628' . substr($digits, 2);
+        }
+
+        return $digits;
+    }
+
+    /**
+     * Build standard payload for WhatsApp Center.
+     */
+    protected function buildWhatsAppCenterPayload(
+        string $phone,
+        string $pushName,
+        ?string $session,
+        bool $isOnline,
+        string $source
+    ): array {
+        $display = $phone;
+        if (str_starts_with($phone, '62') && strlen($phone) >= 11) {
+            // e.g. +62 851-8522-2303
+            $display = '+62 ' . substr($phone, 2, 3) . '-' . substr($phone, 5, 4) . '-' . substr($phone, 9);
+        }
+
+        $defaultGreeting = 'Halo Admin Pekon Margodadi, saya ingin bertanya terkait layanan pekon.';
+        $waLink = "https://wa.me/{$phone}?text=" . rawurlencode($defaultGreeting);
+
+        return [
+            'phone_number' => $phone,
+            'display_number' => $display,
+            'wa_link' => $waLink,
+            'push_name' => $pushName,
+            'session' => $session,
+            'is_online' => $isOnline,
+            'source' => $source,
+        ];
+    }
 }
+

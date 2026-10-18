@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\GlobalSearchController;
 use App\Http\Controllers\Api\PublicServiceController as DirectPublicServiceController;
 use App\Http\Controllers\Api\UmkmController as DirectUmkmController;
 use App\Http\Controllers\Api\Public\ChatbotController;
+use App\Http\Controllers\Api\Public\PekonInfoController;
 use App\Http\Controllers\Api\Public\PublicServiceController;
 use App\Http\Controllers\Api\Public\UmkmController;
 use App\Http\Controllers\Api\Public\WahaWebhookController;
@@ -67,7 +68,13 @@ Route::prefix('public')->group(function () {
     Route::get('/chatbot/sync', [ChatbotController::class, 'syncMessages']);
     Route::post('/chatbot/send', [ChatbotController::class, 'sendMessage']);
     Route::post('/chatbot/feedback', [ChatbotController::class, 'submitFeedback']);
+
+    // WhatsApp Center Info (Dynamic from WAHA or Calibrated Fallback)
+    Route::get('/whatsapp-center', [PekonInfoController::class, 'whatsappCenter']);
 });
+
+// Direct alias for WhatsApp Center Info
+Route::get('/whatsapp-center', [PekonInfoController::class, 'whatsappCenter']);
 
 // Protected Admin & Operator Routes
 Route::middleware(['auth:sanctum', 'operator.activity'])->prefix('admin')->group(function () {
