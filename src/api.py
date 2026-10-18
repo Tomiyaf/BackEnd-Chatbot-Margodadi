@@ -13,9 +13,19 @@ from src.rag import RAGService
 from src.vector_store import delete_document, list_documents
 
 
+class UmkmEntry(BaseModel):
+    id: int = Field(gt=0)
+    name: str = Field(min_length=1, max_length=150)
+
+
 class QueryRequest(BaseModel):
     question: str = Field(min_length=1)
     top_k: int = Field(default=3, ge=1, le=20)
+
+
+class ChatRequest(QueryRequest):
+    session_id: str | None = Field(default=None, min_length=1, max_length=128)
+    umkm_catalogue: list[UmkmEntry] | None = None
 
 
 class TextDocumentRequest(BaseModel):
@@ -272,10 +282,18 @@ def search(request: QueryRequest) -> SearchResponse:
 
 
 @app.post("/chat", response_model=ChatResponse)
-def chat(request: QueryRequest) -> ChatResponse:
+def chat(request: ChatRequest) -> ChatResponse:
     service = get_rag_service()
     try:
-        answer, results = service.chat(request.question, request.top_k)
+        answer, results = service.chat(
+            request.question,
+            request.top_k,
+            session_id=request.session_id,
+            umkm_catalogue=(
+                [entry.model_dump() for entry in request.umkm_catalogue]
+                if request.umkm_catalogue is not None else None
+            ),
+        )
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 

@@ -268,7 +268,7 @@ class ChatbotController extends Controller
         ];
 
         try {
-            $ragResponse = $this->ragGateway->chat($text, 3);
+            $ragResponse = $this->ragGateway->chat($text, 3, 'web:'.$conversation->conversation_id);
 
             $replyContent['text'] = $ragResponse['answer'] ?? 'Maaf, informasi tersebut tidak tersedia dalam data.';
             $replyContent['sources'] = $this->formatRagSources($ragResponse['sources'] ?? []);

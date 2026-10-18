@@ -1,6 +1,7 @@
 from src.config import RAG_TOP_K
 from src.llm import APILLM
 from src.retriever import Retriever, SearchResult
+from src.umkm_directory import UmkmDirectory
 
 
 def build_prompt(question: str, contexts: list[SearchResult]) -> str:
@@ -37,13 +38,30 @@ def build_prompt(question: str, contexts: list[SearchResult]) -> str:
 
 class RAGService:
     def __init__(self) -> None:
-        self.retriever = Retriever()
+        self._retriever: Retriever | None = None
         self.llm: APILLM | None = None
+        self.directory = UmkmDirectory()
+
+    @property
+    def retriever(self) -> Retriever:
+        if self._retriever is None:
+            self._retriever = Retriever()
+        return self._retriever
 
     def search(self, question: str, top_k: int = RAG_TOP_K) -> list[SearchResult]:
         return self.retriever.search(question, top_k)
 
-    def chat(self, question: str, top_k: int = RAG_TOP_K) -> tuple[str, list[SearchResult]]:
+    def chat(
+        self,
+        question: str,
+        top_k: int = RAG_TOP_K,
+        session_id: str | None = None,
+        umkm_catalogue: list[dict] | None = None,
+    ) -> tuple[str, list[SearchResult]]:
+        directory_answer = self.directory.answer(question, session_id, umkm_catalogue)
+        if directory_answer is not None:
+            return directory_answer
+
         contexts = self.search(question, top_k)
         prompt = build_prompt(question, contexts)
 

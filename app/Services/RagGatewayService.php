@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Umkm;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -15,11 +16,20 @@ class RagGatewayService
         $this->baseUrl = rtrim((string) config('services.rag.base_url'), '/');
     }
 
-    public function chat(string $question, int $topK = 3): array
+    public function chat(string $question, int $topK = 3, ?string $sessionId = null): array
     {
         return $this->postJson('/chat', [
             'question' => $question,
             'top_k' => $topK,
+            'session_id' => $sessionId,
+            // The directory comes from current published records, independently of vector indexing.
+            'umkm_catalogue' => Umkm::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->orderBy('umkm_id')
+                ->get(['umkm_id', 'name'])
+                ->map(fn (Umkm $umkm) => ['id' => $umkm->umkm_id, 'name' => $umkm->name])
+                ->all(),
         ], (int) config('services.rag.chat_timeout', 240))->json();
     }
 

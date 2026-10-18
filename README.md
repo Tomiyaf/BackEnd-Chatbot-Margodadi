@@ -50,6 +50,30 @@ Jika migrasi penghapusan tabel sudah pernah dijalankan sebelum migrasi arsip
 ini tersedia, data tabel yang terhapus hanya dapat dipulihkan dari backup
 sebelumnya. Migrasi arsip tetap menyimpan dokumen/kategori yang masih tersedia.
 
+### Daftar UMKM dalam percakapan
+
+Laravel mengirim `session_id` dan `umkm_catalogue` (ID/nama UMKM aktif) ke
+Python pada `/chat`. Sesi web memakai `web:<conversation_id>` dan WhatsApp
+memakai `whatsapp:<conversation_id>`. Daftar bersumber dari database Laravel
+terbaru sehingga dapat ditampilkan sebelum profilnya disinkronkan ke vektor.
+Pertanyaan detail tetap menggunakan retrieval RAG seperti sebelumnya.
+
+Pertanyaan seperti "Apa saja UMKM di Pekon Margodadi?" menampilkan 5 nama
+pertama menurut abjad. Jika masih ada usaha lain, jawaban menyebut
+"Selain itu, masih ada beberapa UMKM lainnya." Pertanyaan "apa saja itu?",
+"yang lainnya?", atau "apa lagi?" menampilkan usaha yang belum disebutkan.
+Jika semuanya sudah ditampilkan, bot tidak mengklaim ada usaha tambahan.
+Permintaan daftar yang baru memulai ulang daftar; perpindahan ke topik lain
+mengakhiri konteks daftar sebelumnya.
+
+Ingatan daftar menyimpan ID yang sudah ditampilkan dan waktu aktivitas,
+terpisah per percakapan, dengan masa berlaku 30 menit tidak aktif. SQLite
+berada di `storage/app/private/chatbot-conversations.sqlite` dan tidak masuk
+Git. Lokasi dapat diatur lewat `CHATBOT_SESSION_DB`; direktori tersebut harus
+dapat ditulis proses Python. Ingatan tetap tersedia setelah API di-restart.
+Permintaan API lama tanpa `umkm_catalogue` tetap memakai alur RAG sebelumnya.
+Tidak ada migrasi tabel Laravel atau perubahan frontend yang diperlukan.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
